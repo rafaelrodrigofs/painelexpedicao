@@ -4,6 +4,13 @@ import { Server } from "socket.io";
 import { createServer } from "http";
 import { fileURLToPath } from "url";
 import mysql from "mysql2/promise";
+const dbconfig = {
+    host: "31.97.255.115",
+    port: 3307,
+    user: "root",
+    password: "rodrigo0196",
+    database: "marmitariafarias",
+};
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
@@ -17,8 +24,19 @@ app.use(express.static(path.join(__dirname, "../public")));
 app.get("/", (req, res) => {
     res.sendFile(join(__dirname, "../public/index.html"));
 });
+async function savePedidoToDatabase(pedido) {
+    try {
+        const connection = await mysql.createConnection(dbconfig);
+        const [result] = await connection.execute("INSERT INTO o01_order (shortReference_order) VALUES (?)", [pedido.shortReference]);
+        await connection.end();
+        return result;
+    }
+    catch (error) {
+        console.error("❌ Erro ao salvar pedido no banco de dados:", error);
+    }
+}
 // ✅ ENDPOINT WEBHOOK - Recebe pedidos do AnotaAI
-app.post("/webhook", (req, res) => {
+app.post("/webhook", async (req, res) => {
     try {
         console.log("📦 WEBHOOK RECEBIDO DO ANOTAAI:");
         console.log("📋 Headers:", req.headers);
@@ -31,6 +49,14 @@ app.post("/webhook", (req, res) => {
                 success: false,
                 message: "Body vazio",
             });
+        }
+        // Salvar pedido no banco de dados
+        try {
+            const result = await savePedidoToDatabase(pedido);
+            console.log("✅ Pedido salvo no banco de dados com sucesso:", result);
+        }
+        catch (error) {
+            console.error("❌ Erro ao salvar pedido no banco de dados:", error);
         }
         // Emitir pedido via Socket.io para todos os clientes conectados
         console.log("📡 Emitindo pedido via Socket.io...");
@@ -50,40 +76,6 @@ app.post("/webhook", (req, res) => {
             success: false,
             message: "Erro ao processar pedido",
             error: error instanceof Error ? error.message : String(error),
-        });
-    }
-});
-app.get("/database_teste", async (req, res) => {
-    let connection;
-    try {
-        // Configuração da conexão com o banco de dados
-        connection = await mysql.createConnection({
-            host: "31.97.255.115",
-            port: 3307,
-            user: "root",
-            password: "rodrigo0196",
-            database: "marmitariafarias",
-        });
-        // Testar a conexão executando uma query simples
-        const [rows] = await connection.execute("SELECT 1 as teste, NOW() as data_hora, DATABASE() as banco_atual");
-        await connection.end();
-        res.status(200).json({
-            success: true,
-            message: "Conexão com o banco de dados estabelecida com sucesso!",
-            dados: rows,
-            timestamp: new Date().toISOString(),
-        });
-    }
-    catch (error) {
-        console.error("❌ Erro ao conectar com o banco de dados:", error);
-        if (connection) {
-            await connection.end().catch(() => { });
-        }
-        res.status(500).json({
-            success: false,
-            message: "Erro ao conectar com o banco de dados",
-            error: error instanceof Error ? error.message : String(error),
-            timestamp: new Date().toISOString(),
         });
     }
 });
