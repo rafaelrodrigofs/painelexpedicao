@@ -3,6 +3,7 @@ import path, { join } from "path";
 import { Server } from "socket.io";
 import { createServer } from "http";
 import { fileURLToPath } from "url";
+import mysql from "mysql2/promise";
 const dbconfig = {
     host: "31.97.255.115",
     port: 3307,
@@ -10,6 +11,17 @@ const dbconfig = {
     password: "rodrigo0196",
     database: "marmitariafarias",
 };
+async function savePedidoToDatabase(pedido) {
+    try {
+        const connection = await mysql.createConnection(dbconfig);
+        const [result] = await connection.execute("INSERT INTO o01_order (shortReference_order) VALUES (?)", [pedido.shortReference]);
+        await connection.end();
+        return result;
+    }
+    catch (error) {
+        console.error("❌ Erro ao salvar pedido no banco de dados:", error);
+    }
+}
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
@@ -24,7 +36,7 @@ app.get("/", (req, res) => {
     res.sendFile(join(__dirname, "../public/index.html"));
 });
 // ✅ ENDPOINT WEBHOOK - Recebe pedidos do AnotaAI
-app.post("/webhook", (req, res) => {
+app.post("/webhook", async (req, res) => {
     try {
         console.log("📦 WEBHOOK RECEBIDO DO ANOTAAI:");
         console.log("📋 Headers:", req.headers);
@@ -36,6 +48,23 @@ app.post("/webhook", (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: "Body vazio",
+            });
+        }
+        // Salvar pedido no banco de dados
+        try {
+            const result = await savePedidoToDatabase(pedido);
+            res.status(200).json({
+                success: true,
+                message: "Pedido salvo no banco de dados com sucesso",
+                data: result,
+            });
+        }
+        catch (error) {
+            console.error("❌ Erro ao salvar pedido no banco de dados:", error);
+            res.status(500).json({
+                success: false,
+                message: "Erro ao salvar pedido no banco de dados",
+                error: error instanceof Error ? error.message : String(error),
             });
         }
         // Emitir pedido via Socket.io para todos os clientes conectados
