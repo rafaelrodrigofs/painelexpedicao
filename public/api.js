@@ -30,8 +30,6 @@ const STATUS_MAP = {
 // Listar todos os pedidos do dia
 async function listarPedidosDoDia() {
     try {
-        console.log('📡 Buscando pedidos do dia...');
-        
         const response = await fetch(`${API_CONFIG.baseURL}/list`, {
             method: 'GET',
             headers: API_CONFIG.headers
@@ -44,7 +42,6 @@ async function listarPedidosDoDia() {
         const data = await response.json();
         
         if (data.success) {
-            console.log(`✅ ${data.info.count} pedidos encontrados`);
             return data.info.docs;
         } else {
             console.error('❌ Erro ao buscar pedidos:', data);
@@ -112,7 +109,6 @@ async function enriquecerPedidoComDadosCompletos(pedido) {
 // Aceitar um pedido (da Análise)
 async function aceitarPedido(orderId) {
     try {
-        console.log(`✅ Aceitando pedido ${orderId}...`);
         
         const response = await fetch(`https://api-parceiros.anota.ai/partnerauth/order/accept/${orderId}`, {
             method: 'POST',
@@ -126,7 +122,6 @@ async function aceitarPedido(orderId) {
         const data = await response.json();
         
         if (data.success) {
-            console.log(`✅ Pedido ${orderId} aceito com sucesso!`);
             return { success: true, data };
         } else {
             console.error('❌ Erro ao aceitar pedido:', data);
@@ -141,7 +136,6 @@ async function aceitarPedido(orderId) {
 // Marcar pedido como pronto (de Em Preparo para Pronto)
 async function marcarPedidoComoPronto(orderId) {
     try {
-        console.log(`✅ Marcando pedido ${orderId} como pronto...`);
         
         const response = await fetch(`https://api-parceiros.anota.ai/partnerauth/order/ready/${orderId}`, {
             method: 'POST',
@@ -155,7 +149,6 @@ async function marcarPedidoComoPronto(orderId) {
         const data = await response.json();
         
         if (data.success) {
-            console.log(`✅ Pedido ${orderId} marcado como pronto com sucesso!`);
             return { success: true, data };
         } else {
             console.error('❌ Erro ao marcar pedido como pronto:', data);
@@ -303,7 +296,6 @@ async function carregarPedidosNoPainel() {
     const pedidos = await listarPedidosDoDia();
     
     if (pedidos.length === 0) {
-        console.log('⚠️ Nenhum pedido encontrado hoje');
         return;
     }
     
@@ -447,7 +439,6 @@ async function carregarPedidosNoPainel() {
         }
     }
     
-    console.log('✅ Pedidos carregados no painel');
 }
 
 // Limpar todos os cards dos Kanbans
@@ -481,7 +472,6 @@ function iniciarAtualizacaoAutomatica(intervalSegundos = 30) {
     
     // Atualizar periodicamente
     setInterval(() => {
-        console.log('🔄 Atualizando pedidos...');
         carregarPedidosNoPainel();
     }, intervalSegundos * 1000);
 }
