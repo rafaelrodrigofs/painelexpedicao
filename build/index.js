@@ -16,34 +16,6 @@ app.use(express.static(path.join(__dirname, '../public')));
 app.get("/", (req, res) => {
     res.sendFile(join(__dirname, "../public/index.html"));
 });
-// ✅ ENDPOINT DE TESTE - Para testar o webhook manualmente
-app.post("/webhook/test", (req, res) => {
-    try {
-        const pedidoTeste = {
-            _id: "TEST_" + Date.now(),
-            shortReference: 9999,
-            check: 0,
-            customer: {
-                name: "Cliente Teste"
-            },
-            createdAt: new Date().toISOString()
-        };
-        console.log("🧪 TESTE: Emitindo pedido de teste via Socket.io");
-        io.emit("novo-pedido", pedidoTeste);
-        res.status(200).json({
-            success: true,
-            message: "Pedido de teste emitido",
-            pedido: pedidoTeste
-        });
-    }
-    catch (error) {
-        console.error("❌ Erro no teste:", error);
-        res.status(500).json({
-            success: false,
-            message: "Erro ao testar webhook"
-        });
-    }
-});
 // ✅ ENDPOINT WEBHOOK - Recebe pedidos do AnotaAI
 app.post("/webhook", (req, res) => {
     try {
