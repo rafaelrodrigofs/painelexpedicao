@@ -475,7 +475,6 @@ function limparTodosKanbans() {
 
 // Atualizar pedidos automaticamente a cada X segundos
 function iniciarAtualizacaoAutomatica(intervalSegundos = 30) {
-    console.log(`🔄 Atualização automática ativada (a cada ${intervalSegundos}s)`);
     
     // Primeira carga
     carregarPedidosNoPainel();
@@ -496,6 +495,3 @@ window.marcarPedidoComoPronto = marcarPedidoComoPronto;
 window.carregarPedidosNoPainel = carregarPedidosNoPainel;
 window.iniciarAtualizacaoAutomatica = iniciarAtualizacaoAutomatica;
 window.criarCardDoPedido = criarCardDoPedido;
-
-console.log('✅ API AnotaAI configurada');
-console.log('✅ Webhook listener pronto');
