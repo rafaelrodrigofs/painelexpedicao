@@ -3,6 +3,7 @@ import path, { join } from "path";
 import { Server } from "socket.io";
 import { createServer } from "http";
 import { fileURLToPath } from "url";
+import { salvarPedido, buscarPedidosDoDia } from "./redis.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
@@ -44,8 +45,26 @@ app.post("/webhook/test", (req, res) => {
         });
     }
 });
+// ✅ ENDPOINT PARA BUSCAR PEDIDOS DO REDIS
+app.get("/api/pedidos", async (req, res) => {
+    try {
+        const pedidos = await buscarPedidosDoDia();
+        res.status(200).json({
+            success: true,
+            count: pedidos.length,
+            pedidos: pedidos
+        });
+    }
+    catch (error) {
+        console.error("❌ Erro ao buscar pedidos:", error);
+        res.status(500).json({
+            success: false,
+            message: "Erro ao buscar pedidos"
+        });
+    }
+});
 // ✅ ENDPOINT WEBHOOK - Recebe pedidos do AnotaAI
-app.post("/webhook", (req, res) => {
+app.post("/webhook", async (req, res) => {
     try {
         console.log("📦 WEBHOOK RECEBIDO DO ANOTAAI:");
         console.log("📋 Headers:", req.headers);
@@ -59,6 +78,9 @@ app.post("/webhook", (req, res) => {
                 message: "Body vazio"
             });
         }
+        // Salvar pedido no Redis
+        console.log("💾 Salvando pedido no Redis...");
+        await salvarPedido(pedido);
         // Emitir pedido via Socket.io para todos os clientes conectados
         console.log("📡 Emitindo pedido via Socket.io...");
         io.emit("novo-pedido", pedido);
@@ -90,4 +112,6 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`🚀 Servidor rodando na porta ${PORT}`);
     console.log(`📍 Webhook disponível em: http://localhost:${PORT}/webhook`);
+    console.log(`📡 API de pedidos: http://localhost:${PORT}/api/pedidos`);
+    console.log(`💾 Redis configurado (host: ${process.env.REDIS_HOST || 'localhost'})`);
 });

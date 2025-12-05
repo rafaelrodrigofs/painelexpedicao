@@ -300,9 +300,65 @@ function criarCardDoPedido(pedido) {
     return cardHTML;
 }
 
-// Carregar e exibir pedidos no painel
+// Buscar pedidos do Redis (via API do servidor)
+async function buscarPedidosDoRedis() {
+    try {
+        console.log('💾 Buscando pedidos do Redis...');
+        
+        const response = await fetch('/api/pedidos', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Erro HTTP: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            console.log(`✅ ${data.count} pedidos encontrados no Redis`);
+            return data.pedidos || [];
+        } else {
+            console.error('❌ Erro ao buscar pedidos do Redis:', data);
+            return [];
+        }
+    } catch (error) {
+        console.error('❌ Erro na requisição ao Redis:', error);
+        return [];
+    }
+}
+
+// Carregar e exibir pedidos no painel (busca da API AnotaAI + Redis)
 async function carregarPedidosNoPainel() {
-    const pedidos = await listarPedidosDoDia();
+    // Buscar pedidos da API do AnotaAI
+    const pedidosAPI = await listarPedidosDoDia();
+    
+    // Buscar pedidos do Redis
+    const pedidosRedis = await buscarPedidosDoRedis();
+    
+    // Combinar pedidos (evitar duplicatas usando _id)
+    const pedidosMap = new Map();
+    
+    // Adicionar pedidos da API
+    pedidosAPI.forEach(pedido => {
+        const id = pedido._id || pedido.id;
+        if (id) {
+            pedidosMap.set(id, pedido);
+        }
+    });
+    
+    // Adicionar pedidos do Redis (sobrescreve se já existir)
+    pedidosRedis.forEach(pedido => {
+        const id = pedido._id || pedido.id;
+        if (id) {
+            pedidosMap.set(id, pedido);
+        }
+    });
+    
+    const pedidos = Array.from(pedidosMap.values());
     
     if (pedidos.length === 0) {
         console.log('⚠️ Nenhum pedido encontrado hoje');
@@ -491,6 +547,7 @@ function iniciarAtualizacaoAutomatica(intervalSegundos = 30) {
 
 // Exportar funções para serem usadas globalmente
 window.listarPedidosDoDia = listarPedidosDoDia;
+window.buscarPedidosDoRedis = buscarPedidosDoRedis;
 window.consultarPedido = consultarPedido;
 window.enriquecerPedidoComDadosCompletos = enriquecerPedidoComDadosCompletos;
 window.aceitarPedido = aceitarPedido;
