@@ -2,72 +2,72 @@
 // PAINEL DE EXPEDIÇÃO - Drag and Drop
 // ============================================
 
-document.addEventListener('DOMContentLoaded', function() {
-    
+document.addEventListener('DOMContentLoaded', function () {
+
     // ========================================
     // FUNÇÕES PRINCIPAIS
     // ========================================
-    
+
     // Função para configurar drag em um card
     function configurarDragCard(card) {
         card.draggable = true;
-        
+
         // Remover listeners antigos se existirem
         const novoCard = card.cloneNode(true);
         card.parentNode.replaceChild(novoCard, card);
-        
+
         // Evento quando começa a arrastar
-        novoCard.addEventListener('dragstart', function(e) {
+        novoCard.addEventListener('dragstart', function (e) {
             this.classList.add('opacity-50');
             e.dataTransfer.effectAllowed = 'move';
             e.dataTransfer.setData('text/html', this.innerHTML);
             e.dataTransfer.setData('cardId', this.dataset.pedidoId);
         });
-        
+
         // Evento quando termina de arrastar
-        novoCard.addEventListener('dragend', function(e) {
+        novoCard.addEventListener('dragend', function (e) {
             this.classList.remove('opacity-50');
         });
-        
+
         // Adicionar evento de impressão
         const btnImprimir = novoCard.querySelector('.fa-print')?.closest('button');
         if (btnImprimir) {
-            btnImprimir.addEventListener('click', function(e) {
+            btnImprimir.addEventListener('click', function (e) {
                 e.stopPropagation();
                 const pedidoId = novoCard.querySelector('.font-bold:not(.text-xs)').textContent.trim();
                 console.log(`🖨️ Imprimir pedido #${pedidoId}`);
                 alert(`🖨️ Imprimindo pedido #${pedidoId}...`);
             });
-            
-            btnImprimir.addEventListener('mousedown', function(e) {
+
+            btnImprimir.addEventListener('mousedown', function (e) {
                 e.stopPropagation();
             });
         }
-        
+
         // Adicionar evento no badge para avançar etapa
         const badge = novoCard.querySelector('[data-card-badge]');
         if (badge) {
-            badge.addEventListener('click', function(e) {
+            badge.addEventListener('click', function (e) {
                 e.stopPropagation();
                 avancarParaProximaEtapa(novoCard);
             });
-            
-            badge.addEventListener('mousedown', function(e) {
+
+            badge.addEventListener('mousedown', function (e) {
                 e.stopPropagation();
             });
         }
     }
-    
+
     // Função para atualizar o status visual do card
     function atualizarCardStatus(card, status) {
         const numero = card.querySelector('.font-bold:not(.text-xs)').textContent.trim();
         const nome = card.querySelector('.text-gray-600').textContent.trim();
         const pedidoId = card.dataset.pedidoId;
         const agendadoOriginal = card.dataset.agendadoOriginal;
-        
+
         let novoHTML = '';
-        
-        switch(status) {
+
+        switch (status) {
             case 'agendados':
                 novoHTML = `
                     <div class="flex items-start justify-between mb-2">
@@ -86,7 +86,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 `;
                 card.className = 'bg-white border border-blue-200 rounded-lg p-2 hover:shadow-md transition cursor-move';
                 break;
-                
+
             case 'analise':
                 novoHTML = `
                     <div class="flex items-start justify-between mb-1">
@@ -107,7 +107,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 `;
                 card.className = 'bg-white border border-gray-200 rounded-lg p-2 hover:shadow-md transition cursor-move';
                 break;
-                
+
             case 'em-preparo':
                 novoHTML = `
                     <div class="flex items-start justify-between mb-2">
@@ -128,7 +128,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 `;
                 card.className = 'bg-white border border-gray-200 rounded-lg p-2 hover:shadow-md transition cursor-move';
                 break;
-                
+
             case 'pronto':
                 novoHTML = `
                     <div class="flex items-start justify-between mb-2">
@@ -150,7 +150,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 card.className = 'bg-white border border-gray-200 rounded-lg p-2 hover:shadow-md transition cursor-move';
                 break;
         }
-        
+
         card.innerHTML = novoHTML;
         card.style.marginBottom = '';
         card.dataset.pedidoId = pedidoId;
@@ -159,50 +159,50 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         card.dataset.pedidoCard = '';
     }
-    
+
     // Função para atualizar contador de pedidos
     function atualizarContadores(kanban) {
         if (!kanban) return;
-        
+
         const dropZone = kanban.querySelector('[data-kanban-drop]');
         const contador = kanban.querySelector('[data-contador]');
-        
+
         if (!dropZone || !contador) return;
-        
+
         const totalPedidos = dropZone.querySelectorAll('[data-pedido-card]').length;
         contador.textContent = totalPedidos;
     }
-    
+
     // Função para avançar pedido para próxima etapa
     async function avancarParaProximaEtapa(card) {
         const kanbanAtual = card.closest('[data-kanban]');
         const statusAtual = kanbanAtual.dataset.kanban;
         const numero = card.querySelector('.font-bold:not(.text-xs)').textContent.trim();
         const pedidoId = card.dataset.pedidoId;
-        
+
         let proximoStatus = '';
-        
-        switch(statusAtual) {
+
+        switch (statusAtual) {
             case 'analise':
                 proximoStatus = 'em-preparo';
-                
+
                 // ACEITAR PEDIDO NA API DO ANOTAAI
                 if (typeof window.aceitarPedido === 'function') {
                     console.log(`📡 Enviando aceitação do pedido #${numero} para API...`);
-                    
+
                     // Desabilitar o botão temporariamente
                     const badge = card.querySelector('[data-card-badge]');
                     if (badge) {
                         badge.disabled = true;
                         badge.textContent = 'Aceitando...';
                     }
-                    
+
                     const resultado = await window.aceitarPedido(pedidoId);
-                    
+
                     if (!resultado.success) {
                         console.error('❌ Falha ao aceitar pedido:', resultado.error);
                         alert(`❌ Erro ao aceitar pedido #${numero}. Tente novamente.`);
-                        
+
                         // Restaurar botão
                         if (badge) {
                             badge.disabled = false;
@@ -210,35 +210,33 @@ document.addEventListener('DOMContentLoaded', function() {
                         }
                         return;
                     }
-                    
-                    console.log(`✅ Pedido #${numero} aceito na API!`);
+
                 }
                 break;
-                
+
             case 'agendados':
                 proximoStatus = 'em-preparo';
                 break;
-                
+
             case 'em-preparo':
                 proximoStatus = 'pronto';
-                
+
                 // MARCAR PEDIDO COMO PRONTO NA API DO ANOTAAI
                 if (typeof window.marcarPedidoComoPronto === 'function') {
-                    console.log(`📡 Marcando pedido #${numero} como pronto na API...`);
-                    
+
                     // Desabilitar o botão temporariamente
                     const badge = card.querySelector('[data-card-badge]');
                     if (badge) {
                         badge.disabled = true;
                         badge.textContent = 'Marcando...';
                     }
-                    
+
                     const resultado = await window.marcarPedidoComoPronto(pedidoId);
-                    
+
                     if (!resultado.success) {
                         console.error('❌ Falha ao marcar pedido como pronto:', resultado.error);
                         alert(`❌ Erro ao marcar pedido #${numero} como pronto. Tente novamente.`);
-                        
+
                         // Restaurar botão
                         if (badge) {
                             badge.disabled = false;
@@ -246,54 +244,52 @@ document.addEventListener('DOMContentLoaded', function() {
                         }
                         return;
                     }
-                    
+
                     console.log(`✅ Pedido #${numero} marcado como pronto na API!`);
                 }
                 break;
-                
+
             case 'pronto':
-                console.log(`✅ Pedido #${numero} já está na última etapa!`);
-                alert(`✅ Pedido #${numero} já está pronto para entrega!`);
+
                 return;
         }
-        
+
         const proximoKanban = document.querySelector(`[data-kanban="${proximoStatus}"]`);
-        
+
         if (proximoKanban) {
             card.remove();
             atualizarCardStatus(card, proximoStatus);
-            
+
             const destinoGrid = proximoKanban.querySelector('[data-kanban-drop] [data-kanban-grid]');
             if (destinoGrid) {
                 destinoGrid.appendChild(card);
             }
-            
+
             configurarDragCard(card);
             atualizarContadores(kanbanAtual);
             atualizarContadores(proximoKanban);
-            
-            console.log(`➡️ Pedido #${numero} avançou de ${statusAtual} para ${proximoStatus}`);
+
         }
     }
-    
+
     // ========================================
     // INICIALIZAÇÃO
     // ========================================
-    
+
     // Tornar todos os cards arrastáveis
     const cards = document.querySelectorAll('[data-pedido-card]');
     cards.forEach(card => {
         configurarDragCard(card);
     });
-    
+
     // Configurar zonas de drop
     const dropZones = document.querySelectorAll('[data-kanban-drop]');
-    
+
     dropZones.forEach(zone => {
-        
-        zone.addEventListener('dragover', function(e) {
+
+        zone.addEventListener('dragover', function (e) {
             e.preventDefault();
-            
+
             const cardAtual = document.querySelector('.opacity-50');
             if (cardAtual) {
                 const origemKanban = cardAtual.closest('[data-kanban]');
@@ -301,12 +297,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 const statusOrigem = origemKanban?.dataset.kanban;
                 const statusDestino = destinoKanban?.dataset.kanban;
                 const foiAgendado = cardAtual.dataset.agendadoOriginal === 'true';
-                
-                const movimentoInvalido = 
+
+                const movimentoInvalido =
                     (statusOrigem === 'analise' && statusDestino === 'agendados') ||
                     (statusOrigem !== 'analise' && statusDestino === 'analise') ||
                     (!foiAgendado && statusDestino === 'agendados');
-                
+
                 if (movimentoInvalido) {
                     e.dataTransfer.dropEffect = 'none';
                     this.classList.add('bg-red-50', 'border-2', 'border-dashed', 'border-red-300');
@@ -316,128 +312,114 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         });
-        
-        zone.addEventListener('dragleave', function(e) {
+
+        zone.addEventListener('dragleave', function (e) {
             this.classList.remove('bg-blue-50', 'border-2', 'border-dashed', 'border-blue-300');
             this.classList.remove('bg-red-50', 'border-2', 'border-dashed', 'border-red-300');
         });
-        
-        zone.addEventListener('drop', async function(e) {
+
+        zone.addEventListener('drop', async function (e) {
             e.preventDefault();
             this.classList.remove('bg-blue-50', 'border-2', 'border-dashed', 'border-blue-300');
             this.classList.remove('bg-red-50', 'border-2', 'border-dashed', 'border-red-300');
-            
+
             const cardId = e.dataTransfer.getData('cardId');
             const draggedCard = document.querySelector(`[data-pedido-id="${cardId}"]`);
-            
+
             if (draggedCard) {
                 const origemKanban = draggedCard.closest('[data-kanban]');
                 const destinoKanban = this.closest('[data-kanban]');
                 const statusOrigem = origemKanban.dataset.kanban;
                 const statusDestino = destinoKanban.dataset.kanban;
                 const numero = draggedCard.querySelector('.font-bold:not(.text-xs)')?.textContent.trim() || cardId;
-                
+
                 // REGRAS DE VALIDAÇÃO
                 if (statusOrigem === 'analise' && statusDestino === 'agendados') {
                     alert('❌ Pedidos da Análise não podem ir para Pedidos Agendados!');
                     return;
                 }
-                
+
                 if (statusOrigem !== 'analise' && statusDestino === 'analise') {
                     alert('❌ Pedidos já aceitos não podem voltar para Análise!');
                     return;
                 }
-                
+
                 const foiAgendado = draggedCard.dataset.agendadoOriginal === 'true';
                 if (!foiAgendado && statusDestino === 'agendados') {
                     alert('❌ Apenas pedidos que foram agendados originalmente podem voltar para esta coluna!');
                     return;
                 }
-                
+
                 // SE ESTÁ SAINDO DA ANÁLISE, ACEITAR NA API PRIMEIRO
                 if (statusOrigem === 'analise' && statusDestino !== 'analise') {
                     if (typeof window.aceitarPedido === 'function') {
-                        console.log(`📡 Aceitando pedido #${numero} na API...`);
-                        
+
                         const resultado = await window.aceitarPedido(cardId);
-                        
+
                         if (!resultado.success) {
                             console.error('❌ Falha ao aceitar pedido:', resultado.error);
                             alert(`❌ Erro ao aceitar pedido #${numero}. Tente novamente.`);
                             return;
                         }
-                        
-                        console.log(`✅ Pedido #${numero} aceito na API!`);
+
                     }
                 }
-                
+
                 // SE ESTÁ SAINDO DE EM-PREPARO PARA PRONTO, MARCAR COMO PRONTO NA API
                 if (statusOrigem === 'em-preparo' && statusDestino === 'pronto') {
                     if (typeof window.marcarPedidoComoPronto === 'function') {
-                        console.log(`📡 Marcando pedido #${numero} como pronto na API...`);
-                        
+
                         const resultado = await window.marcarPedidoComoPronto(cardId);
-                        
+
                         if (!resultado.success) {
                             console.error('❌ Falha ao marcar pedido como pronto:', resultado.error);
                             alert(`❌ Erro ao marcar pedido #${numero} como pronto. Tente novamente.`);
                             return;
                         }
-                        
-                        console.log(`✅ Pedido #${numero} marcado como pronto na API!`);
                     }
                 }
-                
+
                 // MOVIMENTAÇÃO PERMITIDA
                 draggedCard.remove();
                 atualizarCardStatus(draggedCard, statusDestino);
-                
+
                 const destinoGrid = this.querySelector('[data-kanban-grid]');
                 if (destinoGrid) {
                     destinoGrid.appendChild(draggedCard);
                 }
-                
+
                 configurarDragCard(draggedCard);
                 atualizarContadores(origemKanban);
                 atualizarContadores(destinoKanban);
-                
-                console.log(`✅ Pedido ${cardId} movido de ${statusOrigem} para ${statusDestino}`);
+
             }
         });
     });
-    
-    console.log('✅ Sistema de drag and drop iniciado');
-    console.log('✅ Regras de validação ativas');
-    console.log('🖨️ Ícones de impressão configurados');
-    
+
     // Exportar funções para uso global (API)
     window.configurarDragCard = configurarDragCard;
     window.atualizarContadores = atualizarContadores;
     window.avancarParaProximaEtapa = avancarParaProximaEtapa;
-    
+
     // ========================================
     // SOCKET.IO - WEBHOOK LISTENER
     // ========================================
-    
+
     // Conectar ao servidor Socket.io
-    console.log('🔌 Tentando conectar ao Socket.io...');
     const socket = io();
-    
+
     socket.on('connect', () => {
         console.log('✅ Conectado ao servidor via Socket.io');
-        console.log('🚀 Sistema pronto para receber pedidos via webhook');
-        console.log('📍 Webhook URL: http://localhost:3000/webhook');
-        console.log('📡 Socket ID:', socket.id);
     });
-    
+
     socket.on('disconnect', (reason) => {
         console.log('❌ Desconectado do servidor. Motivo:', reason);
     });
-    
+
     socket.on('connect_error', (error) => {
         console.error('❌ Erro ao conectar Socket.io:', error);
     });
-    
+
     // Verificar se está conectado após 2 segundos
     setTimeout(() => {
         if (socket.connected) {
@@ -446,13 +428,13 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('❌ Socket.io NÃO está conectado!');
         }
     }, 2000);
-    
+
     // Escutar novos pedidos do webhook
     socket.on('novo-pedido', async (pedido) => {
         try {
             console.log('🔔 NOVO PEDIDO RECEBIDO VIA WEBHOOK:', pedido);
             console.log(`📊 Status do pedido (check): ${pedido.check}`);
-            
+
             // Mapear status do pedido
             const statusMap = {
                 '-2': 'agendados',    // Pedido agendado
@@ -464,19 +446,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 '5': 'negado',        // Negado (não exibir)
                 '6': 'cancelamento'   // Solicitação de cancelamento (não exibir)
             };
-            
+
             const status = statusMap[pedido.check?.toString()] || 'analise';
-            
+
             if (pedido.check === -2) {
                 console.log('✅ Pedido agendado detectado (check: -2)');
             }
-            
+
             // Ignorar pedidos finalizados/cancelados
             if (['finalizado', 'cancelado', 'negado', 'cancelamento'].includes(status)) {
                 console.log('⚠️ Pedido ignorado (status:', status, ')');
                 return;
             }
-            
+
             // Enriquecer pedido com dados completos (shortReference e customer.name)
             let pedidoEnriquecido = pedido;
             if (typeof window.enriquecerPedidoComDadosCompletos === 'function') {
@@ -488,138 +470,128 @@ document.addEventListener('DOMContentLoaded', function() {
                     pedidoEnriquecido = pedido;
                 }
             }
-        
-        // Criar card do pedido (função do api.js)
-        if (typeof window.criarCardDoPedido === 'function') {
-            const cardHTML = window.criarCardDoPedido(pedidoEnriquecido);
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = cardHTML;
-            const card = tempDiv.firstElementChild;
-            
-            // Adicionar no Kanban correto
-            const kanban = document.querySelector(`[data-kanban="${status}"]`);
-            if (kanban) {
-                let grid = null;
-                
-                // Tratamento especial para pedidos agendados (organizar por intervalo)
-                if (status === 'agendados') {
-                    // Determinar horário de agendamento
-                    const dataAgendamento = pedidoEnriquecido.schedule_order?.date || 
-                                            pedidoEnriquecido.preparationStartDateTime || 
-                                            pedidoEnriquecido.createdAt;
-                    const horaAgendamento = new Date(dataAgendamento).getHours();
-                    const minutoAgendamento = new Date(dataAgendamento).getMinutes();
-                    const horaMinuto = horaAgendamento * 60 + minutoAgendamento; // Total em minutos
-                    
-                    // Determinar intervalo
-                    let intervalo = '';
-                    if (horaMinuto >= 11 * 60 && horaMinuto < 11 * 60 + 30) {
-                        intervalo = '11:00 - 11:30';
-                    } else if (horaMinuto >= 11 * 60 + 30 && horaMinuto < 12 * 60) {
-                        intervalo = '11:30 - 12:00';
-                    } else if (horaMinuto >= 12 * 60 && horaMinuto < 12 * 60 + 30) {
-                        intervalo = '12:00 - 12:30';
-                    } else if (horaMinuto >= 12 * 60 + 30 && horaMinuto < 13 * 60) {
-                        intervalo = '12:30 - 13:00';
-                    } else if (horaMinuto >= 13 * 60 && horaMinuto < 13 * 60 + 30) {
-                        intervalo = '13:00 - 13:30';
-                    } else if (horaMinuto >= 13 * 60 + 30 && horaMinuto < 14 * 60) {
-                        intervalo = '13:30 - 14:00';
-                    } else {
-                        intervalo = '11:00 - 11:30'; // Default
-                    }
-                    
-                    // Encontrar o grid do intervalo
-                    const intervalos = kanban.querySelectorAll('.space-y-2');
-                    intervalos.forEach(intervaloDiv => {
-                        const textoIntervalo = intervaloDiv.querySelector('.text-blue-900')?.textContent.trim();
-                        if (textoIntervalo === intervalo) {
-                            grid = intervaloDiv.querySelector('[data-kanban-grid]');
+
+            // Criar card do pedido (função do api.js)
+            if (typeof window.criarCardDoPedido === 'function') {
+                const cardHTML = window.criarCardDoPedido(pedidoEnriquecido);
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = cardHTML;
+                const card = tempDiv.firstElementChild;
+
+                // Adicionar no Kanban correto
+                const kanban = document.querySelector(`[data-kanban="${status}"]`);
+                if (kanban) {
+                    let grid = null;
+
+                    // Tratamento especial para pedidos agendados (organizar por intervalo)
+                    if (status === 'agendados') {
+                        // Determinar horário de agendamento
+                        const dataAgendamento = pedidoEnriquecido.schedule_order?.date ||
+                            pedidoEnriquecido.preparationStartDateTime ||
+                            pedidoEnriquecido.createdAt;
+                        const horaAgendamento = new Date(dataAgendamento).getHours();
+                        const minutoAgendamento = new Date(dataAgendamento).getMinutes();
+                        const horaMinuto = horaAgendamento * 60 + minutoAgendamento; // Total em minutos
+
+                        // Determinar intervalo
+                        let intervalo = '';
+                        if (horaMinuto >= 11 * 60 && horaMinuto < 11 * 60 + 30) {
+                            intervalo = '11:00 - 11:30';
+                        } else if (horaMinuto >= 11 * 60 + 30 && horaMinuto < 12 * 60) {
+                            intervalo = '11:30 - 12:00';
+                        } else if (horaMinuto >= 12 * 60 && horaMinuto < 12 * 60 + 30) {
+                            intervalo = '12:00 - 12:30';
+                        } else if (horaMinuto >= 12 * 60 + 30 && horaMinuto < 13 * 60) {
+                            intervalo = '12:30 - 13:00';
+                        } else if (horaMinuto >= 13 * 60 && horaMinuto < 13 * 60 + 30) {
+                            intervalo = '13:00 - 13:30';
+                        } else if (horaMinuto >= 13 * 60 + 30 && horaMinuto < 14 * 60) {
+                            intervalo = '13:30 - 14:00';
+                        } else {
+                            intervalo = '11:00 - 11:30'; // Default
                         }
-                    });
-                    
-                    // Se não encontrou, usar o primeiro grid disponível
-                    if (!grid) {
+
+                        // Encontrar o grid do intervalo
+                        const intervalos = kanban.querySelectorAll('.space-y-2');
+                        intervalos.forEach(intervaloDiv => {
+                            const textoIntervalo = intervaloDiv.querySelector('.text-blue-900')?.textContent.trim();
+                            if (textoIntervalo === intervalo) {
+                                grid = intervaloDiv.querySelector('[data-kanban-grid]');
+                            }
+                        });
+
+                        // Se não encontrou, usar o primeiro grid disponível
+                        if (!grid) {
+                            grid = kanban.querySelector('[data-kanban-grid]');
+                        }
+                    } else {
+                        // Para outros status, usar grid único
                         grid = kanban.querySelector('[data-kanban-grid]');
                     }
-                } else {
-                    // Para outros status, usar grid único
-                    grid = kanban.querySelector('[data-kanban-grid]');
-                }
-                
-                if (grid) {
-                    grid.appendChild(card);
-                    
-                    // Configurar drag and drop
-                    configurarDragCard(card);
-                    
-                    // Atualizar contador
-                    atualizarContadores(kanban);
-                    
-                    // Se for agendado, atualizar contador do intervalo também
-                    if (status === 'agendados') {
-                        const intervaloDiv = grid.closest('.space-y-2');
-                        if (intervaloDiv) {
-                            const contadorIntervalo = intervaloDiv.querySelector('.bg-blue-300');
-                            if (contadorIntervalo) {
-                                const total = grid.querySelectorAll('[data-pedido-card]').length;
-                                contadorIntervalo.textContent = total;
+
+                    if (grid) {
+                        grid.appendChild(card);
+
+                        // Configurar drag and drop
+                        configurarDragCard(card);
+
+                        // Atualizar contador
+                        atualizarContadores(kanban);
+
+                        // Se for agendado, atualizar contador do intervalo também
+                        if (status === 'agendados') {
+                            const intervaloDiv = grid.closest('.space-y-2');
+                            if (intervaloDiv) {
+                                const contadorIntervalo = intervaloDiv.querySelector('.bg-blue-300');
+                                if (contadorIntervalo) {
+                                    const total = grid.querySelectorAll('[data-pedido-card]').length;
+                                    contadorIntervalo.textContent = total;
+                                }
                             }
                         }
+
+                        const numeroPedido = pedidoEnriquecido.shortReference || pedidoEnriquecido._id || 'N/A';
+
+                        // Tocar som de notificação (opcional)
+                        try {
+                            const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3');
+                            audio.volume = 0.3;
+                            audio.play().catch(e => console.log('🔇 Som bloqueado pelo navegador'));
+                        } catch (e) {
+                            console.log('🔇 Não foi possível tocar o som');
+                        }
                     }
-                    
-                    const numeroPedido = pedidoEnriquecido.shortReference || pedidoEnriquecido._id || 'N/A';
-                    console.log(`✅ Pedido #${numeroPedido} adicionado em "${status}"`);
-                    
-                    // Tocar som de notificação (opcional)
-                    try {
-                        const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3');
-                        audio.volume = 0.3;
-                        audio.play().catch(e => console.log('🔇 Som bloqueado pelo navegador'));
-                    } catch (e) {
-                        console.log('🔇 Não foi possível tocar o som');
-                    }
+                } else {
+                    console.error('❌ Kanban não encontrado para status:', status);
                 }
             } else {
-                console.error('❌ Kanban não encontrado para status:', status);
+                console.error('❌ Função criarCardDoPedido não encontrada');
             }
-        } else {
-            console.error('❌ Função criarCardDoPedido não encontrada');
-        }
         } catch (error) {
             console.error('❌ ERRO AO PROCESSAR PEDIDO DO WEBHOOK:', error);
             console.error('Stack:', error.stack);
         }
     });
-    
-    console.log('');
-    console.log('💡 Comandos disponíveis:');
-    console.log('   - carregarPedidosNoPainel() - Carregar manualmente');
-    console.log('   - iniciarAtualizacaoAutomatica(X) - Mudar intervalo de atualização');
-    
+
     // ========================================
     // CARREGAR PEDIDOS AUTOMATICAMENTE
     // ========================================
-    
+
     // Aguardar que a função da API esteja disponível
     setTimeout(() => {
         if (typeof window.carregarPedidosNoPainel === 'function') {
-            console.log('');
-            console.log('🔄 Carregando pedidos existentes da API...');
-            
+
             // Carregar pedidos ao iniciar
             window.carregarPedidosNoPainel();
-            
+
             // Atualizar automaticamente a cada 30 segundos
             setInterval(() => {
-                console.log('🔄 Atualizando pedidos...');
                 window.carregarPedidosNoPainel();
             }, 30000); // 30 segundos
-            
-            console.log('✅ Atualização automática ativada (a cada 30s)');
+
         } else {
             console.error('❌ Função carregarPedidosNoPainel não encontrada');
         }
     }, 500);
-    
+
 });
