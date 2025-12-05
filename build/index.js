@@ -10,16 +10,28 @@ const dbconfig = {
     user: "root",
     password: "rodrigo0196",
     database: "marmitariafarias",
+    connectTimeout: 10000, // 10 segundos de timeout
+    connectionLimit: 10,
 };
 async function savePedidoToDatabase(pedido) {
+    let connection;
     try {
-        const connection = await mysql.createConnection(dbconfig);
+        connection = await mysql.createConnection(dbconfig);
         const [result] = await connection.execute("INSERT INTO o01_order (shortReference_order) VALUES (?)", [pedido.shortReference]);
         await connection.end();
         return result;
     }
     catch (error) {
-        console.error("❌ Erro ao salvar pedido no banco de dados:", error);
+        // Fecha a conexão apenas se ela foi estabelecida
+        if (connection) {
+            try {
+                await connection.end();
+            }
+            catch (closeError) {
+                console.error("Erro ao fechar conexão:", closeError);
+            }
+        }
+        throw error; // Relança o erro para ser tratado no webhook
     }
 }
 const __filename = fileURLToPath(import.meta.url);
@@ -51,27 +63,22 @@ app.post("/webhook", async (req, res) => {
             });
         }
         // Salvar pedido no banco de dados
+        console.log("💾 Salvando pedido no banco de dados...");
         try {
             const result = await savePedidoToDatabase(pedido);
-            res.status(200).json({
-                success: true,
-                message: "Pedido salvo no banco de dados com sucesso",
-                data: result,
-            });
+            console.log("✅ Pedido salvo no banco de dados com sucesso");
         }
-        catch (error) {
-            console.error("❌ Erro ao salvar pedido no banco de dados:", error);
-            res.status(500).json({
-                success: false,
-                message: "Erro ao salvar pedido no banco de dados",
-                error: error instanceof Error ? error.message : String(error),
-            });
+        catch (dbError) {
+            console.error("❌ Erro ao salvar pedido no banco de dados:", dbError);
+            // Continua o processamento mesmo se houver erro no banco
+            // O pedido ainda será emitido via Socket.io
         }
         // Emitir pedido via Socket.io para todos os clientes conectados
         console.log("📡 Emitindo pedido via Socket.io...");
         io.emit("novo-pedido", pedido);
+        console.log("✅ Pedido emitido via Socket.io");
         console.log(`👥 Clientes conectados: ${io.sockets.sockets.size}`);
-        // Responder ao AnotaAI
+        // Responder ao AnotaAI (apenas uma vez, no final)
         res.status(200).json({
             success: true,
             message: "Pedido recebido com sucesso",
