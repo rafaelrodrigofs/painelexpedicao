@@ -5,17 +5,28 @@ import { createServer } from "http";
 import { fileURLToPath } from "url";
 import mysql from "mysql2/promise";
 
+// Configuração do banco de dados
+// No Coolify, use variáveis de ambiente fornecidas pelo banco de dados
+// Para desenvolvimento local, use os valores padrão
 const dbconfig = {
-  host: "31.97.255.115",
-  port: 3307,
-  user: "root",
-  password: "#Rodrigo0196",
-  database: "marmitariafarias",
+  host: process.env.DB_HOST || process.env.MARIADB_HOST || "31.97.255.115",
+  port: parseInt(process.env.DB_PORT || process.env.MARIADB_PORT || "3307"),
+  user: process.env.DB_USER || process.env.MARIADB_USER || "root",
+  password: process.env.DB_PASSWORD || process.env.MARIADB_PASSWORD || "#Rodrigo0196",
+  database: process.env.DB_DATABASE || process.env.MARIADB_DATABASE || "marmitariafarias",
   connectTimeout: 10000, // 10 segundos de timeout
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
 };
+
+// Log da configuração (sem mostrar a senha completa)
+console.log("🔧 Configuração do banco de dados:");
+console.log(`   Host: ${dbconfig.host}`);
+console.log(`   Port: ${dbconfig.port}`);
+console.log(`   User: ${dbconfig.user}`);
+console.log(`   Database: ${dbconfig.database}`);
+console.log(`   Usando variáveis de ambiente: ${!!(process.env.DB_HOST || process.env.MARIADB_HOST)}`);
 
 // Criar pool de conexões (mais eficiente que criar conexão a cada requisição)
 const pool = mysql.createPool(dbconfig);
@@ -37,10 +48,11 @@ async function testDatabaseConnection() {
     console.error(`   Código: ${(error as any).code || 'N/A'}`);
     console.error(`   Mensagem: ${error instanceof Error ? error.message : String(error)}`);
     console.error("\n💡 Verifique:");
-    console.error("   1. Se o servidor MySQL está rodando");
-    console.error("   2. Se o IP e porta estão corretos");
-    console.error("   3. Se o firewall permite conexões na porta 3307");
+    console.error("   1. Se o servidor MariaDB está rodando");
+    console.error("   2. Se o host e porta estão corretos");
+    console.error("   3. Se as variáveis de ambiente estão configuradas (no Coolify)");
     console.error("   4. Se as credenciais estão corretas");
+    console.error("   5. Se o banco permite conexões do container da aplicação");
     return false;
   }
 }
@@ -97,6 +109,7 @@ app.post("/webhook", async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Body vazio",
+        pedido: pedido
       });
     }
 
