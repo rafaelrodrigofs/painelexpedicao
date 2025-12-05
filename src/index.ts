@@ -4,6 +4,7 @@ import { Server } from "socket.io";
 import { createServer } from "http";
 import { fileURLToPath } from "url";
 import { salvarPedido, buscarPedidosDoDia, atualizarStatusPedido } from "./redis.js";
+import redis from "./redis.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -140,9 +141,33 @@ app.post("/webhook", async (req, res) => {
       });
     }
     
+    // Verificar se Redis está conectado antes de salvar
+    const redisStatus = redis.status;
+    console.log(`💾 Status do Redis antes de salvar: ${redisStatus}`);
+    
+    if (redisStatus !== 'ready' && redisStatus !== 'connect') {
+      console.error(`❌ Redis não está pronto! Status: ${redisStatus}`);
+      console.error("⚠️ Tentando reconectar...");
+      // Tentar ping para forçar reconexão
+      try {
+        await redis.ping();
+        console.log("✅ Redis reconectado!");
+      } catch (error) {
+        console.error("❌ Falha ao reconectar Redis:", error);
+      }
+    }
+    
     // Salvar pedido no Redis
     console.log("💾 Salvando pedido no Redis...");
-    await salvarPedido(pedido);
+    console.log(`💾 Pedido ID: ${pedido._id || pedido.id}`);
+    const salvouRedis = await salvarPedido(pedido);
+    
+    if (salvouRedis) {
+      console.log("✅ Pedido salvo no Redis com sucesso!");
+    } else {
+      console.error("❌ FALHA ao salvar pedido no Redis!");
+      console.error("⚠️ Continuando mesmo assim para não perder o pedido...");
+    }
     
     // Emitir pedido via Socket.io para todos os clientes conectados
     console.log("📡 Emitindo pedido via Socket.io...");
@@ -178,9 +203,22 @@ io.on("connection", (socket) => {
 
 const PORT = process.env.PORT || 3000;
 
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
   console.log(`📍 Webhook disponível em: http://localhost:${PORT}/webhook`);
   console.log(`📡 API de pedidos: http://localhost:${PORT}/api/pedidos`);
   console.log(`💾 Redis configurado (host: ${process.env.REDIS_HOST || 'localhost'})`);
+  
+  // Verificar conexão do Redis após iniciar servidor
+  setTimeout(async () => {
+    try {
+      const resultado = await redis.ping();
+      console.log(`✅ Redis está funcionando! PING: ${resultado}`);
+      console.log(`✅ Redis Status: ${redis.status}`);
+    } catch (error) {
+      console.error('❌ Redis NÃO está conectado!');
+      console.error('❌ Erro:', error instanceof Error ? error.message : String(error));
+      console.error('⚠️ Pedidos não serão salvos no Redis até conectar!');
+    }
+  }, 2000);
 });
