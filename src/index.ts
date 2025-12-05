@@ -7,9 +7,9 @@ import mysql from "mysql2/promise";
 
 const dbconfig = {
   host: "31.97.255.115",
-  port: 3306,
+  port: 3307,
   user: "root",
-  password: "rodrigo0196",
+  password: "rodrigo019612",
   database: "marmitariafarias",
   connectTimeout: 10000, // 10 segundos de timeout
   waitForConnections: true,
