@@ -169,35 +169,6 @@ async function marcarPedidoComoPronto(orderId) {
     }
 }
 
-// Finalizar pedido (de Pronto para Finalizado)
-async function finalizarPedido(orderId) {
-    try {
-        console.log(`✅ Finalizando pedido ${orderId}...`);
-        
-        const response = await fetch(`https://api-parceiros.anota.ai/partnerauth/order/finalize/${orderId}`, {
-            method: 'POST',
-            headers: API_CONFIG.headers
-        });
-        
-        if (!response.ok) {
-            throw new Error(`Erro HTTP: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            console.log(`✅ Pedido ${orderId} finalizado com sucesso!`);
-            return { success: true, data };
-        } else {
-            console.error('❌ Erro ao finalizar pedido:', data);
-            return { success: false, error: data };
-        }
-    } catch (error) {
-        console.error('❌ Erro na requisição:', error);
-        return { success: false, error: error.message };
-    }
-}
-
 // ========================================
 // FUNÇÕES DE PROCESSAMENTO
 // ========================================
@@ -220,12 +191,8 @@ function criarCardDoPedido(pedido) {
     let cardHTML = '';
     
     if (status === 'agendados') {
-        // Card de pedido agendado (com horário de agendamento)
-        // Usar schedule_order.date ou preparationStartDateTime se disponível, senão createdAt
-        const dataAgendamento = pedido.schedule_order?.date || 
-                                pedido.preparationStartDateTime || 
-                                pedido.createdAt;
-        const horario = new Date(dataAgendamento).toLocaleTimeString('pt-BR', { 
+        // Card de pedido agendado (com horário)
+        const horario = new Date(pedido.createdAt).toLocaleTimeString('pt-BR', { 
             hour: '2-digit', 
             minute: '2-digit' 
         });
@@ -367,111 +334,32 @@ async function carregarPedidosNoPainel() {
         const kanban = document.querySelector(`[data-kanban="${status}"]`);
         
         if (kanban) {
-            // Tratamento especial para pedidos agendados (organizar por intervalos)
-            if (status === 'agendados') {
-                // Processar pedidos agendados e organizar por intervalo
+            const grid = kanban.querySelector('[data-kanban-grid]');
+            
+            if (grid) {
+                // Processar pedidos em paralelo, mas limitar para não sobrecarregar
                 const promises = listaPedidos.map(async (pedido) => {
                     // Enriquecer pedido com dados completos se necessário
                     const pedidoEnriquecido = await enriquecerPedidoComDadosCompletos(pedido);
                     
-                    // Determinar horário de agendamento
-                    const dataAgendamento = pedidoEnriquecido.schedule_order?.date || 
-                                            pedidoEnriquecido.preparationStartDateTime || 
-                                            pedidoEnriquecido.createdAt;
-                    const horaAgendamento = new Date(dataAgendamento).getHours();
-                    const minutoAgendamento = new Date(dataAgendamento).getMinutes();
-                    const horaMinuto = horaAgendamento * 60 + minutoAgendamento; // Total em minutos
+                    const cardHTML = criarCardDoPedido(pedidoEnriquecido);
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = cardHTML;
+                    const card = tempDiv.firstElementChild;
                     
-                    // Determinar intervalo (11:00-11:30, 11:30-12:00, etc)
-                    let intervalo = '';
-                    if (horaMinuto >= 11 * 60 && horaMinuto < 11 * 60 + 30) {
-                        intervalo = '11:00 - 11:30';
-                    } else if (horaMinuto >= 11 * 60 + 30 && horaMinuto < 12 * 60) {
-                        intervalo = '11:30 - 12:00';
-                    } else if (horaMinuto >= 12 * 60 && horaMinuto < 12 * 60 + 30) {
-                        intervalo = '12:00 - 12:30';
-                    } else if (horaMinuto >= 12 * 60 + 30 && horaMinuto < 13 * 60) {
-                        intervalo = '12:30 - 13:00';
-                    } else if (horaMinuto >= 13 * 60 && horaMinuto < 13 * 60 + 30) {
-                        intervalo = '13:00 - 13:30';
-                    } else if (horaMinuto >= 13 * 60 + 30 && horaMinuto < 14 * 60) {
-                        intervalo = '13:30 - 14:00';
-                    } else {
-                        // Se não estiver em nenhum intervalo, usar o primeiro disponível
-                        intervalo = '11:00 - 11:30';
-                    }
+                    grid.appendChild(card);
                     
-                    // Encontrar o grid do intervalo
-                    const intervalos = kanban.querySelectorAll('.space-y-2');
-                    let gridEncontrado = null;
-                    
-                    intervalos.forEach(intervaloDiv => {
-                        const textoIntervalo = intervaloDiv.querySelector('.text-blue-900')?.textContent.trim();
-                        if (textoIntervalo === intervalo) {
-                            gridEncontrado = intervaloDiv.querySelector('[data-kanban-grid]');
-                        }
-                    });
-                    
-                    // Se não encontrou, usar o primeiro grid disponível
-                    if (!gridEncontrado) {
-                        gridEncontrado = kanban.querySelector('[data-kanban-grid]');
-                    }
-                    
-                    if (gridEncontrado) {
-                        const cardHTML = criarCardDoPedido(pedidoEnriquecido);
-                        const tempDiv = document.createElement('div');
-                        tempDiv.innerHTML = cardHTML;
-                        const card = tempDiv.firstElementChild;
-                        
-                        gridEncontrado.appendChild(card);
-                        
-                        // Configurar drag and drop no card
-                        if (window.configurarDragCard) {
-                            window.configurarDragCard(card);
-                        }
-                        
-                        // Atualizar contador do intervalo
-                        const intervaloDiv = gridEncontrado.closest('.space-y-2');
-                        if (intervaloDiv) {
-                            const contadorIntervalo = intervaloDiv.querySelector('.bg-blue-300');
-                            if (contadorIntervalo) {
-                                const total = gridEncontrado.querySelectorAll('[data-pedido-card]').length;
-                                contadorIntervalo.textContent = total;
-                            }
-                        }
+                    // Configurar drag and drop no card
+                    if (window.configurarDragCard) {
+                        window.configurarDragCard(card);
                     }
                 });
                 
+                // Aguardar todos os pedidos serem processados
                 await Promise.all(promises);
-            } else {
-                // Para outros status, usar grid único
-                const grid = kanban.querySelector('[data-kanban-grid]');
-                
-                if (grid) {
-                    // Processar pedidos em paralelo
-                    const promises = listaPedidos.map(async (pedido) => {
-                        // Enriquecer pedido com dados completos se necessário
-                        const pedidoEnriquecido = await enriquecerPedidoComDadosCompletos(pedido);
-                        
-                        const cardHTML = criarCardDoPedido(pedidoEnriquecido);
-                        const tempDiv = document.createElement('div');
-                        tempDiv.innerHTML = cardHTML;
-                        const card = tempDiv.firstElementChild;
-                        
-                        grid.appendChild(card);
-                        
-                        // Configurar drag and drop no card
-                        if (window.configurarDragCard) {
-                            window.configurarDragCard(card);
-                        }
-                    });
-                    
-                    // Aguardar todos os pedidos serem processados
-                    await Promise.all(promises);
-                }
             }
             
-            // Atualizar contador geral do kanban
+            // Atualizar contador
             if (window.atualizarContadores) {
                 window.atualizarContadores(kanban);
             }
@@ -524,7 +412,6 @@ window.consultarPedido = consultarPedido;
 window.enriquecerPedidoComDadosCompletos = enriquecerPedidoComDadosCompletos;
 window.aceitarPedido = aceitarPedido;
 window.marcarPedidoComoPronto = marcarPedidoComoPronto;
-window.finalizarPedido = finalizarPedido;
 window.carregarPedidosNoPainel = carregarPedidosNoPainel;
 window.iniciarAtualizacaoAutomatica = iniciarAtualizacaoAutomatica;
 window.criarCardDoPedido = criarCardDoPedido;
