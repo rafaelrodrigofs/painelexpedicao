@@ -3,8 +3,6 @@ import path, { dirname, join } from "path";
 import { Server } from "socket.io";
 import { createServer } from "http";
 import { fileURLToPath } from "url";
-import { salvarPedido, buscarPedidosDoDia, atualizarStatusPedido } from "./redis.js";
-import redis from "./redis.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -25,8 +23,8 @@ app.get("/", (req, res) => {
   res.sendFile(join(__dirname, "../public/index.html"));
 });
 
-// ✅ ENDPOINT DE TESTE - Para testar o webhook manualmente (salva no Redis)
-app.post("/webhook/test", async (req, res) => {
+// ✅ ENDPOINT DE TESTE - Para testar o webhook manualmente
+app.post("/webhook/test", (req, res) => {
   try {
     const pedidoTeste = {
       _id: "TEST_" + Date.now(),
@@ -38,93 +36,25 @@ app.post("/webhook/test", async (req, res) => {
       createdAt: new Date().toISOString()
     };
     
-    console.log("🧪 TESTE: Salvando pedido de teste no Redis...");
-    const salvou = await salvarPedido(pedidoTeste);
-    
-    if (salvou) {
-      console.log("✅ TESTE: Pedido salvo no Redis com sucesso!");
-    } else {
-      console.error("❌ TESTE: Falha ao salvar pedido no Redis");
-    }
-    
     console.log("🧪 TESTE: Emitindo pedido de teste via Socket.io");
     io.emit("novo-pedido", pedidoTeste);
     
     res.status(200).json({ 
       success: true, 
-      message: "Pedido de teste processado",
-      salvouNoRedis: salvou,
+      message: "Pedido de teste emitido",
       pedido: pedidoTeste
     });
   } catch (error) {
     console.error("❌ Erro no teste:", error);
     res.status(500).json({ 
       success: false, 
-      message: "Erro ao testar webhook",
-      error: error instanceof Error ? error.message : String(error)
-    });
-  }
-});
-
-// ✅ ENDPOINT PARA TESTAR REDIS DIRETAMENTE
-app.get("/api/test-redis", async (req, res) => {
-  try {
-    console.log("🧪 TESTE REDIS: Testando conexão...");
-    
-    // Testar conexão básica
-    const redis = (await import('./redis.js')).default;
-    await redis.ping();
-    
-    // Tentar salvar um teste
-    const pedidoTeste = {
-      _id: "TEST_REDIS_" + Date.now(),
-      shortReference: 8888,
-      check: 0,
-      customer: { name: "Teste Redis" },
-      createdAt: new Date().toISOString()
-    };
-    
-    const salvou = await salvarPedido(pedidoTeste);
-    const pedidos = await buscarPedidosDoDia();
-    
-    res.status(200).json({
-      success: true,
-      redisConectado: true,
-      salvouTeste: salvou,
-      totalPedidos: pedidos.length,
-      mensagem: "Redis está funcionando!"
-    });
-  } catch (error) {
-    console.error("❌ Erro ao testar Redis:", error);
-    res.status(500).json({
-      success: false,
-      redisConectado: false,
-      error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined
-    });
-  }
-});
-
-// ✅ ENDPOINT PARA BUSCAR PEDIDOS DO REDIS
-app.get("/api/pedidos", async (req, res) => {
-  try {
-    const pedidos = await buscarPedidosDoDia();
-    res.status(200).json({
-      success: true,
-      count: pedidos.length,
-      pedidos: pedidos
-    });
-  } catch (error) {
-    console.error("❌ Erro ao buscar pedidos:", error);
-    res.status(500).json({
-      success: false,
-      message: "Erro ao buscar pedidos"
+      message: "Erro ao testar webhook" 
     });
   }
 });
 
 // ✅ ENDPOINT WEBHOOK - Recebe pedidos do AnotaAI
-app.post("/webhook", async (req, res) => {
+app.post("/webhook", (req, res) => {
   try {
     console.log("📦 WEBHOOK RECEBIDO DO ANOTAAI:");
     console.log("📋 Headers:", req.headers);
@@ -139,34 +69,6 @@ app.post("/webhook", async (req, res) => {
         success: false, 
         message: "Body vazio" 
       });
-    }
-    
-    // Verificar se Redis está conectado antes de salvar
-    const redisStatus = redis.status;
-    console.log(`💾 Status do Redis antes de salvar: ${redisStatus}`);
-    
-    if (redisStatus !== 'ready' && redisStatus !== 'connect') {
-      console.error(`❌ Redis não está pronto! Status: ${redisStatus}`);
-      console.error("⚠️ Tentando reconectar...");
-      // Tentar ping para forçar reconexão
-      try {
-        await redis.ping();
-        console.log("✅ Redis reconectado!");
-      } catch (error) {
-        console.error("❌ Falha ao reconectar Redis:", error);
-      }
-    }
-    
-    // Salvar pedido no Redis
-    console.log("💾 Salvando pedido no Redis...");
-    console.log(`💾 Pedido ID: ${pedido._id || pedido.id}`);
-    const salvouRedis = await salvarPedido(pedido);
-    
-    if (salvouRedis) {
-      console.log("✅ Pedido salvo no Redis com sucesso!");
-    } else {
-      console.error("❌ FALHA ao salvar pedido no Redis!");
-      console.error("⚠️ Continuando mesmo assim para não perder o pedido...");
     }
     
     // Emitir pedido via Socket.io para todos os clientes conectados
@@ -203,22 +105,7 @@ io.on("connection", (socket) => {
 
 const PORT = process.env.PORT || 3000;
 
-server.listen(PORT, async () => {
+server.listen(PORT, () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
   console.log(`📍 Webhook disponível em: http://localhost:${PORT}/webhook`);
-  console.log(`📡 API de pedidos: http://localhost:${PORT}/api/pedidos`);
-  console.log(`💾 Redis configurado (host: ${process.env.REDIS_HOST || 'localhost'})`);
-  
-  // Verificar conexão do Redis após iniciar servidor
-  setTimeout(async () => {
-    try {
-      const resultado = await redis.ping();
-      console.log(`✅ Redis está funcionando! PING: ${resultado}`);
-      console.log(`✅ Redis Status: ${redis.status}`);
-    } catch (error) {
-      console.error('❌ Redis NÃO está conectado!');
-      console.error('❌ Erro:', error instanceof Error ? error.message : String(error));
-      console.error('⚠️ Pedidos não serão salvos no Redis até conectar!');
-    }
-  }, 2000);
 });

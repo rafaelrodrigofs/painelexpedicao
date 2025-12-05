@@ -59,7 +59,7 @@ async function listarPedidosDoDia() {
 // Consultar informações detalhadas de um pedido
 async function consultarPedido(orderId) {
     try {
-        // console.log(`📡 Consultando pedido ${orderId}...`);
+        console.log(`📡 Consultando pedido ${orderId}...`);
         
         const response = await fetch(`https://api-parceiros.anota.ai/partnerauth/ping/get/${orderId}`, {
             method: 'GET',
@@ -73,7 +73,7 @@ async function consultarPedido(orderId) {
         const data = await response.json();
         
         if (data.success) {
-            // console.log(`✅ Pedido ${orderId} encontrado`);
+            console.log(`✅ Pedido ${orderId} encontrado`);
             return data.info;
         } else {
             console.error('❌ Erro ao consultar pedido:', data);
@@ -300,65 +300,9 @@ function criarCardDoPedido(pedido) {
     return cardHTML;
 }
 
-// Buscar pedidos do Redis (via API do servidor)
-async function buscarPedidosDoRedis() {
-    try {
-        console.log('💾 Buscando pedidos do Redis...');
-        
-        const response = await fetch('/api/pedidos', {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        });
-        
-        if (!response.ok) {
-            throw new Error(`Erro HTTP: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            console.log(`✅ ${data.count} pedidos encontrados no Redis`);
-            return data.pedidos || [];
-        } else {
-            console.error('❌ Erro ao buscar pedidos do Redis:', data);
-            return [];
-        }
-    } catch (error) {
-        console.error('❌ Erro na requisição ao Redis:', error);
-        return [];
-    }
-}
-
-// Carregar e exibir pedidos no painel (busca da API AnotaAI + Redis)
+// Carregar e exibir pedidos no painel
 async function carregarPedidosNoPainel() {
-    // Buscar pedidos da API do AnotaAI
-    const pedidosAPI = await listarPedidosDoDia();
-    
-    // Buscar pedidos do Redis
-    const pedidosRedis = await buscarPedidosDoRedis();
-    
-    // Combinar pedidos (evitar duplicatas usando _id)
-    const pedidosMap = new Map();
-    
-    // Adicionar pedidos da API
-    pedidosAPI.forEach(pedido => {
-        const id = pedido._id || pedido.id;
-        if (id) {
-            pedidosMap.set(id, pedido);
-        }
-    });
-    
-    // Adicionar pedidos do Redis (sobrescreve se já existir)
-    pedidosRedis.forEach(pedido => {
-        const id = pedido._id || pedido.id;
-        if (id) {
-            pedidosMap.set(id, pedido);
-        }
-    });
-    
-    const pedidos = Array.from(pedidosMap.values());
+    const pedidos = await listarPedidosDoDia();
     
     if (pedidos.length === 0) {
         console.log('⚠️ Nenhum pedido encontrado hoje');
@@ -547,7 +491,6 @@ function iniciarAtualizacaoAutomatica(intervalSegundos = 30) {
 
 // Exportar funções para serem usadas globalmente
 window.listarPedidosDoDia = listarPedidosDoDia;
-window.buscarPedidosDoRedis = buscarPedidosDoRedis;
 window.consultarPedido = consultarPedido;
 window.enriquecerPedidoComDadosCompletos = enriquecerPedidoComDadosCompletos;
 window.aceitarPedido = aceitarPedido;
