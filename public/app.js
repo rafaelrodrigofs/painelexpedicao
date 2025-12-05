@@ -174,23 +174,83 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Função para avançar pedido para próxima etapa
-    function avancarParaProximaEtapa(card) {
+    async function avancarParaProximaEtapa(card) {
         const kanbanAtual = card.closest('[data-kanban]');
         const statusAtual = kanbanAtual.dataset.kanban;
         const numero = card.querySelector('.font-bold:not(.text-xs)').textContent.trim();
+        const pedidoId = card.dataset.pedidoId;
         
         let proximoStatus = '';
         
         switch(statusAtual) {
             case 'analise':
                 proximoStatus = 'em-preparo';
+                
+                // ACEITAR PEDIDO NA API DO ANOTAAI
+                if (typeof window.aceitarPedido === 'function') {
+                    console.log(`📡 Enviando aceitação do pedido #${numero} para API...`);
+                    
+                    // Desabilitar o botão temporariamente
+                    const badge = card.querySelector('[data-card-badge]');
+                    if (badge) {
+                        badge.disabled = true;
+                        badge.textContent = 'Aceitando...';
+                    }
+                    
+                    const resultado = await window.aceitarPedido(pedidoId);
+                    
+                    if (!resultado.success) {
+                        console.error('❌ Falha ao aceitar pedido:', resultado.error);
+                        alert(`❌ Erro ao aceitar pedido #${numero}. Tente novamente.`);
+                        
+                        // Restaurar botão
+                        if (badge) {
+                            badge.disabled = false;
+                            badge.textContent = 'Aceitar Pedido';
+                        }
+                        return;
+                    }
+                    
+                    console.log(`✅ Pedido #${numero} aceito na API!`);
+                }
                 break;
+                
             case 'agendados':
                 proximoStatus = 'em-preparo';
                 break;
+                
             case 'em-preparo':
                 proximoStatus = 'pronto';
+                
+                // MARCAR PEDIDO COMO PRONTO NA API DO ANOTAAI
+                if (typeof window.marcarPedidoComoPronto === 'function') {
+                    console.log(`📡 Marcando pedido #${numero} como pronto na API...`);
+                    
+                    // Desabilitar o botão temporariamente
+                    const badge = card.querySelector('[data-card-badge]');
+                    if (badge) {
+                        badge.disabled = true;
+                        badge.textContent = 'Marcando...';
+                    }
+                    
+                    const resultado = await window.marcarPedidoComoPronto(pedidoId);
+                    
+                    if (!resultado.success) {
+                        console.error('❌ Falha ao marcar pedido como pronto:', resultado.error);
+                        alert(`❌ Erro ao marcar pedido #${numero} como pronto. Tente novamente.`);
+                        
+                        // Restaurar botão
+                        if (badge) {
+                            badge.disabled = false;
+                            badge.textContent = '5min';
+                        }
+                        return;
+                    }
+                    
+                    console.log(`✅ Pedido #${numero} marcado como pronto na API!`);
+                }
                 break;
+                
             case 'pronto':
                 console.log(`✅ Pedido #${numero} já está na última etapa!`);
                 alert(`✅ Pedido #${numero} já está pronto para entrega!`);
@@ -262,7 +322,7 @@ document.addEventListener('DOMContentLoaded', function() {
             this.classList.remove('bg-red-50', 'border-2', 'border-dashed', 'border-red-300');
         });
         
-        zone.addEventListener('drop', function(e) {
+        zone.addEventListener('drop', async function(e) {
             e.preventDefault();
             this.classList.remove('bg-blue-50', 'border-2', 'border-dashed', 'border-blue-300');
             this.classList.remove('bg-red-50', 'border-2', 'border-dashed', 'border-red-300');
@@ -275,6 +335,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const destinoKanban = this.closest('[data-kanban]');
                 const statusOrigem = origemKanban.dataset.kanban;
                 const statusDestino = destinoKanban.dataset.kanban;
+                const numero = draggedCard.querySelector('.font-bold:not(.text-xs)')?.textContent.trim() || cardId;
                 
                 // REGRAS DE VALIDAÇÃO
                 if (statusOrigem === 'analise' && statusDestino === 'agendados') {
@@ -291,6 +352,40 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (!foiAgendado && statusDestino === 'agendados') {
                     alert('❌ Apenas pedidos que foram agendados originalmente podem voltar para esta coluna!');
                     return;
+                }
+                
+                // SE ESTÁ SAINDO DA ANÁLISE, ACEITAR NA API PRIMEIRO
+                if (statusOrigem === 'analise' && statusDestino !== 'analise') {
+                    if (typeof window.aceitarPedido === 'function') {
+                        console.log(`📡 Aceitando pedido #${numero} na API...`);
+                        
+                        const resultado = await window.aceitarPedido(cardId);
+                        
+                        if (!resultado.success) {
+                            console.error('❌ Falha ao aceitar pedido:', resultado.error);
+                            alert(`❌ Erro ao aceitar pedido #${numero}. Tente novamente.`);
+                            return;
+                        }
+                        
+                        console.log(`✅ Pedido #${numero} aceito na API!`);
+                    }
+                }
+                
+                // SE ESTÁ SAINDO DE EM-PREPARO PARA PRONTO, MARCAR COMO PRONTO NA API
+                if (statusOrigem === 'em-preparo' && statusDestino === 'pronto') {
+                    if (typeof window.marcarPedidoComoPronto === 'function') {
+                        console.log(`📡 Marcando pedido #${numero} como pronto na API...`);
+                        
+                        const resultado = await window.marcarPedidoComoPronto(cardId);
+                        
+                        if (!resultado.success) {
+                            console.error('❌ Falha ao marcar pedido como pronto:', resultado.error);
+                            alert(`❌ Erro ao marcar pedido #${numero} como pronto. Tente novamente.`);
+                            return;
+                        }
+                        
+                        console.log(`✅ Pedido #${numero} marcado como pronto na API!`);
+                    }
                 }
                 
                 // MOVIMENTAÇÃO PERMITIDA
@@ -325,45 +420,78 @@ document.addEventListener('DOMContentLoaded', function() {
     // ========================================
     
     // Conectar ao servidor Socket.io
+    console.log('🔌 Tentando conectar ao Socket.io...');
     const socket = io();
     
     socket.on('connect', () => {
         console.log('✅ Conectado ao servidor via Socket.io');
         console.log('🚀 Sistema pronto para receber pedidos via webhook');
         console.log('📍 Webhook URL: http://localhost:3000/webhook');
+        console.log('📡 Socket ID:', socket.id);
     });
     
-    socket.on('disconnect', () => {
-        console.log('❌ Desconectado do servidor');
+    socket.on('disconnect', (reason) => {
+        console.log('❌ Desconectado do servidor. Motivo:', reason);
     });
+    
+    socket.on('connect_error', (error) => {
+        console.error('❌ Erro ao conectar Socket.io:', error);
+    });
+    
+    // Verificar se está conectado após 2 segundos
+    setTimeout(() => {
+        if (socket.connected) {
+            console.log('✅ Socket.io está conectado e funcionando');
+        } else {
+            console.error('❌ Socket.io NÃO está conectado!');
+        }
+    }, 2000);
     
     // Escutar novos pedidos do webhook
-    socket.on('novo-pedido', (pedido) => {
-        console.log('🔔 NOVO PEDIDO RECEBIDO VIA WEBHOOK:', pedido);
-        
-        // Mapear status do pedido
-        const statusMap = {
-            '-2': 'agendados',
-            '0': 'analise',
-            '1': 'em-preparo',
-            '2': 'pronto',
-            '3': 'finalizado',
-            '4': 'cancelado',
-            '5': 'negado',
-            '6': 'cancelamento'
-        };
-        
-        const status = statusMap[pedido.check?.toString()] || 'analise';
-        
-        // Ignorar pedidos finalizados/cancelados
-        if (['finalizado', 'cancelado', 'negado', 'cancelamento'].includes(status)) {
-            console.log('⚠️ Pedido ignorado (status:', status, ')');
-            return;
-        }
+    socket.on('novo-pedido', async (pedido) => {
+        try {
+            console.log('🔔 NOVO PEDIDO RECEBIDO VIA WEBHOOK:', pedido);
+            console.log(`📊 Status do pedido (check): ${pedido.check}`);
+            
+            // Mapear status do pedido
+            const statusMap = {
+                '-2': 'agendados',    // Pedido agendado
+                '0': 'analise',       // Em análise
+                '1': 'em-preparo',    // Em produção
+                '2': 'pronto',        // Pronto
+                '3': 'finalizado',    // Finalizado (não exibir)
+                '4': 'cancelado',     // Cancelado (não exibir)
+                '5': 'negado',        // Negado (não exibir)
+                '6': 'cancelamento'   // Solicitação de cancelamento (não exibir)
+            };
+            
+            const status = statusMap[pedido.check?.toString()] || 'analise';
+            
+            if (pedido.check === -2) {
+                console.log('✅ Pedido agendado detectado (check: -2)');
+            }
+            
+            // Ignorar pedidos finalizados/cancelados
+            if (['finalizado', 'cancelado', 'negado', 'cancelamento'].includes(status)) {
+                console.log('⚠️ Pedido ignorado (status:', status, ')');
+                return;
+            }
+            
+            // Enriquecer pedido com dados completos (shortReference e customer.name)
+            let pedidoEnriquecido = pedido;
+            if (typeof window.enriquecerPedidoComDadosCompletos === 'function') {
+                try {
+                    pedidoEnriquecido = await window.enriquecerPedidoComDadosCompletos(pedido);
+                } catch (error) {
+                    console.error('❌ Erro ao enriquecer pedido:', error);
+                    // Continuar com pedido original se falhar
+                    pedidoEnriquecido = pedido;
+                }
+            }
         
         // Criar card do pedido (função do api.js)
         if (typeof window.criarCardDoPedido === 'function') {
-            const cardHTML = window.criarCardDoPedido(pedido);
+            const cardHTML = window.criarCardDoPedido(pedidoEnriquecido);
             const tempDiv = document.createElement('div');
             tempDiv.innerHTML = cardHTML;
             const card = tempDiv.firstElementChild;
@@ -371,7 +499,54 @@ document.addEventListener('DOMContentLoaded', function() {
             // Adicionar no Kanban correto
             const kanban = document.querySelector(`[data-kanban="${status}"]`);
             if (kanban) {
-                const grid = kanban.querySelector('[data-kanban-grid]');
+                let grid = null;
+                
+                // Tratamento especial para pedidos agendados (organizar por intervalo)
+                if (status === 'agendados') {
+                    // Determinar horário de agendamento
+                    const dataAgendamento = pedidoEnriquecido.schedule_order?.date || 
+                                            pedidoEnriquecido.preparationStartDateTime || 
+                                            pedidoEnriquecido.createdAt;
+                    const horaAgendamento = new Date(dataAgendamento).getHours();
+                    const minutoAgendamento = new Date(dataAgendamento).getMinutes();
+                    const horaMinuto = horaAgendamento * 60 + minutoAgendamento; // Total em minutos
+                    
+                    // Determinar intervalo
+                    let intervalo = '';
+                    if (horaMinuto >= 11 * 60 && horaMinuto < 11 * 60 + 30) {
+                        intervalo = '11:00 - 11:30';
+                    } else if (horaMinuto >= 11 * 60 + 30 && horaMinuto < 12 * 60) {
+                        intervalo = '11:30 - 12:00';
+                    } else if (horaMinuto >= 12 * 60 && horaMinuto < 12 * 60 + 30) {
+                        intervalo = '12:00 - 12:30';
+                    } else if (horaMinuto >= 12 * 60 + 30 && horaMinuto < 13 * 60) {
+                        intervalo = '12:30 - 13:00';
+                    } else if (horaMinuto >= 13 * 60 && horaMinuto < 13 * 60 + 30) {
+                        intervalo = '13:00 - 13:30';
+                    } else if (horaMinuto >= 13 * 60 + 30 && horaMinuto < 14 * 60) {
+                        intervalo = '13:30 - 14:00';
+                    } else {
+                        intervalo = '11:00 - 11:30'; // Default
+                    }
+                    
+                    // Encontrar o grid do intervalo
+                    const intervalos = kanban.querySelectorAll('.space-y-2');
+                    intervalos.forEach(intervaloDiv => {
+                        const textoIntervalo = intervaloDiv.querySelector('.text-blue-900')?.textContent.trim();
+                        if (textoIntervalo === intervalo) {
+                            grid = intervaloDiv.querySelector('[data-kanban-grid]');
+                        }
+                    });
+                    
+                    // Se não encontrou, usar o primeiro grid disponível
+                    if (!grid) {
+                        grid = kanban.querySelector('[data-kanban-grid]');
+                    }
+                } else {
+                    // Para outros status, usar grid único
+                    grid = kanban.querySelector('[data-kanban-grid]');
+                }
+                
                 if (grid) {
                     grid.appendChild(card);
                     
@@ -381,7 +556,20 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Atualizar contador
                     atualizarContadores(kanban);
                     
-                    console.log(`✅ Pedido #${pedido.shortReference || pedido._id} adicionado em "${status}"`);
+                    // Se for agendado, atualizar contador do intervalo também
+                    if (status === 'agendados') {
+                        const intervaloDiv = grid.closest('.space-y-2');
+                        if (intervaloDiv) {
+                            const contadorIntervalo = intervaloDiv.querySelector('.bg-blue-300');
+                            if (contadorIntervalo) {
+                                const total = grid.querySelectorAll('[data-pedido-card]').length;
+                                contadorIntervalo.textContent = total;
+                            }
+                        }
+                    }
+                    
+                    const numeroPedido = pedidoEnriquecido.shortReference || pedidoEnriquecido._id || 'N/A';
+                    console.log(`✅ Pedido #${numeroPedido} adicionado em "${status}"`);
                     
                     // Tocar som de notificação (opcional)
                     try {
@@ -392,9 +580,15 @@ document.addEventListener('DOMContentLoaded', function() {
                         console.log('🔇 Não foi possível tocar o som');
                     }
                 }
+            } else {
+                console.error('❌ Kanban não encontrado para status:', status);
             }
         } else {
             console.error('❌ Função criarCardDoPedido não encontrada');
+        }
+        } catch (error) {
+            console.error('❌ ERRO AO PROCESSAR PEDIDO DO WEBHOOK:', error);
+            console.error('Stack:', error.stack);
         }
     });
     
