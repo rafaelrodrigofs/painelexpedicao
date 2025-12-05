@@ -252,42 +252,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 break;
                 
             case 'pronto':
-                // FINALIZAR PEDIDO NA API DO ANOTAAI
-                if (typeof window.finalizarPedido === 'function') {
-                    console.log(`📡 Finalizando pedido #${numero} na API...`);
-                    
-                    // Desabilitar o botão temporariamente
-                    const badge = card.querySelector('[data-card-badge]');
-                    if (badge) {
-                        badge.disabled = true;
-                        badge.textContent = 'Finalizando...';
-                    }
-                    
-                    const resultado = await window.finalizarPedido(pedidoId);
-                    
-                    if (!resultado.success) {
-                        console.error('❌ Falha ao finalizar pedido:', resultado.error);
-                        alert(`❌ Erro ao finalizar pedido #${numero}. Tente novamente.`);
-                        
-                        // Restaurar botão
-                        if (badge) {
-                            badge.disabled = false;
-                            badge.textContent = 'Pronto';
-                        }
-                        return;
-                    }
-                    
-                    console.log(`✅ Pedido #${numero} finalizado na API!`);
-                    
-                    // Remover card do painel (pedidos finalizados não são exibidos)
-                    card.remove();
-                    atualizarContadores(kanbanAtual);
-                    
-                    return;
-                } else {
-                    console.log(`✅ Pedido #${numero} já está na última etapa!`);
-                    return;
-                }
+                console.log(`✅ Pedido #${numero} já está na última etapa!`);
+                alert(`✅ Pedido #${numero} já está pronto para entrega!`);
+                return;
         }
         
         const proximoKanban = document.querySelector(`[data-kanban="${proximoStatus}"]`);
@@ -387,29 +354,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
                 
-                // SE ESTÁ EM PRONTO E TENTA MOVER, FINALIZAR AO INVÉS DE MOVER
-                if (statusOrigem === 'pronto' && statusDestino !== 'pronto') {
-                    if (typeof window.finalizarPedido === 'function') {
-                        console.log(`📡 Finalizando pedido #${numero} na API...`);
-                        
-                        const resultado = await window.finalizarPedido(cardId);
-                        
-                        if (!resultado.success) {
-                            console.error('❌ Falha ao finalizar pedido:', resultado.error);
-                            alert(`❌ Erro ao finalizar pedido #${numero}. Tente novamente.`);
-                            return;
-                        }
-                        
-                        console.log(`✅ Pedido #${numero} finalizado na API!`);
-                        
-                        // Remover card do painel (pedidos finalizados não são exibidos)
-                        draggedCard.remove();
-                        atualizarContadores(origemKanban);
-                        
-                        return;
-                    }
-                }
-                
                 // SE ESTÁ SAINDO DA ANÁLISE, ACEITAR NA API PRIMEIRO
                 if (statusOrigem === 'analise' && statusDestino !== 'analise') {
                     if (typeof window.aceitarPedido === 'function') {
@@ -476,78 +420,45 @@ document.addEventListener('DOMContentLoaded', function() {
     // ========================================
     
     // Conectar ao servidor Socket.io
-    console.log('🔌 Tentando conectar ao Socket.io...');
     const socket = io();
     
     socket.on('connect', () => {
         console.log('✅ Conectado ao servidor via Socket.io');
         console.log('🚀 Sistema pronto para receber pedidos via webhook');
         console.log('📍 Webhook URL: http://localhost:3000/webhook');
-        console.log('📡 Socket ID:', socket.id);
     });
     
-    socket.on('disconnect', (reason) => {
-        console.log('❌ Desconectado do servidor. Motivo:', reason);
+    socket.on('disconnect', () => {
+        console.log('❌ Desconectado do servidor');
     });
-    
-    socket.on('connect_error', (error) => {
-        console.error('❌ Erro ao conectar Socket.io:', error);
-    });
-    
-    // Verificar se está conectado após 2 segundos
-    setTimeout(() => {
-        if (socket.connected) {
-            console.log('✅ Socket.io está conectado e funcionando');
-        } else {
-            console.error('❌ Socket.io NÃO está conectado!');
-        }
-    }, 2000);
     
     // Escutar novos pedidos do webhook
-    socket.on('novo-pedido', async (pedido) => {
-        try {
-            console.log('🔔 NOVO PEDIDO RECEBIDO VIA WEBHOOK:', pedido);
-            console.log(`📊 Status do pedido (check): ${pedido.check}`);
-            
-            // Mapear status do pedido
-            const statusMap = {
-                '-2': 'agendados',    // Pedido agendado
-                '0': 'analise',       // Em análise
-                '1': 'em-preparo',    // Em produção
-                '2': 'pronto',        // Pronto
-                '3': 'finalizado',    // Finalizado (não exibir)
-                '4': 'cancelado',     // Cancelado (não exibir)
-                '5': 'negado',        // Negado (não exibir)
-                '6': 'cancelamento'   // Solicitação de cancelamento (não exibir)
-            };
-            
-            const status = statusMap[pedido.check?.toString()] || 'analise';
-            
-            if (pedido.check === -2) {
-                console.log('✅ Pedido agendado detectado (check: -2)');
-            }
-            
-            // Ignorar pedidos finalizados/cancelados
-            if (['finalizado', 'cancelado', 'negado', 'cancelamento'].includes(status)) {
-                console.log('⚠️ Pedido ignorado (status:', status, ')');
-                return;
-            }
-            
-            // Enriquecer pedido com dados completos (shortReference e customer.name)
-            let pedidoEnriquecido = pedido;
-            if (typeof window.enriquecerPedidoComDadosCompletos === 'function') {
-                try {
-                    pedidoEnriquecido = await window.enriquecerPedidoComDadosCompletos(pedido);
-                } catch (error) {
-                    console.error('❌ Erro ao enriquecer pedido:', error);
-                    // Continuar com pedido original se falhar
-                    pedidoEnriquecido = pedido;
-                }
-            }
+    socket.on('novo-pedido', (pedido) => {
+        console.log('🔔 NOVO PEDIDO RECEBIDO VIA WEBHOOK:', pedido);
+        
+        // Mapear status do pedido
+        const statusMap = {
+            '-2': 'agendados',
+            '0': 'analise',
+            '1': 'em-preparo',
+            '2': 'pronto',
+            '3': 'finalizado',
+            '4': 'cancelado',
+            '5': 'negado',
+            '6': 'cancelamento'
+        };
+        
+        const status = statusMap[pedido.check?.toString()] || 'analise';
+        
+        // Ignorar pedidos finalizados/cancelados
+        if (['finalizado', 'cancelado', 'negado', 'cancelamento'].includes(status)) {
+            console.log('⚠️ Pedido ignorado (status:', status, ')');
+            return;
+        }
         
         // Criar card do pedido (função do api.js)
         if (typeof window.criarCardDoPedido === 'function') {
-            const cardHTML = window.criarCardDoPedido(pedidoEnriquecido);
+            const cardHTML = window.criarCardDoPedido(pedido);
             const tempDiv = document.createElement('div');
             tempDiv.innerHTML = cardHTML;
             const card = tempDiv.firstElementChild;
@@ -555,54 +466,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Adicionar no Kanban correto
             const kanban = document.querySelector(`[data-kanban="${status}"]`);
             if (kanban) {
-                let grid = null;
-                
-                // Tratamento especial para pedidos agendados (organizar por intervalo)
-                if (status === 'agendados') {
-                    // Determinar horário de agendamento
-                    const dataAgendamento = pedidoEnriquecido.schedule_order?.date || 
-                                            pedidoEnriquecido.preparationStartDateTime || 
-                                            pedidoEnriquecido.createdAt;
-                    const horaAgendamento = new Date(dataAgendamento).getHours();
-                    const minutoAgendamento = new Date(dataAgendamento).getMinutes();
-                    const horaMinuto = horaAgendamento * 60 + minutoAgendamento; // Total em minutos
-                    
-                    // Determinar intervalo
-                    let intervalo = '';
-                    if (horaMinuto >= 11 * 60 && horaMinuto < 11 * 60 + 30) {
-                        intervalo = '11:00 - 11:30';
-                    } else if (horaMinuto >= 11 * 60 + 30 && horaMinuto < 12 * 60) {
-                        intervalo = '11:30 - 12:00';
-                    } else if (horaMinuto >= 12 * 60 && horaMinuto < 12 * 60 + 30) {
-                        intervalo = '12:00 - 12:30';
-                    } else if (horaMinuto >= 12 * 60 + 30 && horaMinuto < 13 * 60) {
-                        intervalo = '12:30 - 13:00';
-                    } else if (horaMinuto >= 13 * 60 && horaMinuto < 13 * 60 + 30) {
-                        intervalo = '13:00 - 13:30';
-                    } else if (horaMinuto >= 13 * 60 + 30 && horaMinuto < 14 * 60) {
-                        intervalo = '13:30 - 14:00';
-                    } else {
-                        intervalo = '11:00 - 11:30'; // Default
-                    }
-                    
-                    // Encontrar o grid do intervalo
-                    const intervalos = kanban.querySelectorAll('.space-y-2');
-                    intervalos.forEach(intervaloDiv => {
-                        const textoIntervalo = intervaloDiv.querySelector('.text-blue-900')?.textContent.trim();
-                        if (textoIntervalo === intervalo) {
-                            grid = intervaloDiv.querySelector('[data-kanban-grid]');
-                        }
-                    });
-                    
-                    // Se não encontrou, usar o primeiro grid disponível
-                    if (!grid) {
-                        grid = kanban.querySelector('[data-kanban-grid]');
-                    }
-                } else {
-                    // Para outros status, usar grid único
-                    grid = kanban.querySelector('[data-kanban-grid]');
-                }
-                
+                const grid = kanban.querySelector('[data-kanban-grid]');
                 if (grid) {
                     grid.appendChild(card);
                     
@@ -612,20 +476,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Atualizar contador
                     atualizarContadores(kanban);
                     
-                    // Se for agendado, atualizar contador do intervalo também
-                    if (status === 'agendados') {
-                        const intervaloDiv = grid.closest('.space-y-2');
-                        if (intervaloDiv) {
-                            const contadorIntervalo = intervaloDiv.querySelector('.bg-blue-300');
-                            if (contadorIntervalo) {
-                                const total = grid.querySelectorAll('[data-pedido-card]').length;
-                                contadorIntervalo.textContent = total;
-                            }
-                        }
-                    }
-                    
-                    const numeroPedido = pedidoEnriquecido.shortReference || pedidoEnriquecido._id || 'N/A';
-                    console.log(`✅ Pedido #${numeroPedido} adicionado em "${status}"`);
+                    console.log(`✅ Pedido #${pedido.shortReference || pedido._id} adicionado em "${status}"`);
                     
                     // Tocar som de notificação (opcional)
                     try {
@@ -636,15 +487,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         console.log('🔇 Não foi possível tocar o som');
                     }
                 }
-            } else {
-                console.error('❌ Kanban não encontrado para status:', status);
             }
         } else {
             console.error('❌ Função criarCardDoPedido não encontrada');
-        }
-        } catch (error) {
-            console.error('❌ ERRO AO PROCESSAR PEDIDO DO WEBHOOK:', error);
-            console.error('Stack:', error.stack);
         }
     });
     
