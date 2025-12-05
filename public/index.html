@@ -1,14 +1,922 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Painel de Expedição - Lunch&fit Marmitas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body>
-    <script src="../node_modules/socket.io/client-dist/socket.io.js"></script>
+<body class="bg-gray-50 h-screen overflow-hidden">
+    
+    <!-- Container Principal -->
+    <div class="flex h-screen">
+        
+        <!-- Sidebar -->
+        <aside class="w-16 bg-white border-r border-gray-200 flex flex-col items-center py-4 space-y-6">
+            <div class="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center text-white font-bold">
+                <i class="fas fa-utensils"></i>
+            </div>
+            
+            <nav class="flex-1 flex flex-col items-center space-y-4 mt-8">
+                <button class="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition">
+                    <i class="fas fa-home text-xl"></i>
+                </button>
+                <button class="w-10 h-10 flex items-center justify-center text-red-500 bg-red-50 rounded-lg transition">
+                    <i class="fas fa-box text-xl"></i>
+                </button>
+                <button class="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition">
+                    <i class="fas fa-clipboard-list text-xl"></i>
+                </button>
+                <button class="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition">
+                    <i class="fas fa-truck text-xl"></i>
+                </button>
+            </nav>
+            
+            <div class="space-y-4 flex flex-col items-center">
+                <button class="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition">
+                    <i class="fas fa-question-circle text-xl"></i>
+                </button>
+                <button class="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition">
+                    <i class="fas fa-cog text-xl"></i>
+                </button>
+                <button class="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition">
+                    <i class="fas fa-user-circle text-xl"></i>
+                </button>
+            </div>
+        </aside>
+        
+        <!-- Conteúdo Principal -->
+        <div class="flex-1 flex flex-col">
+            
+            <!-- Header -->
+            <header class="bg-white border-b border-gray-200 px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                      
+                        
+                        <!-- Search Bar -->
+                        <div class="ml-8">
+                            <div class="relative">
+                                <input 
+                                    type="text" 
+                                    placeholder="Buscar" 
+                                    class="w-64 pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                >
+                                <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center space-x-6">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                            <span class="text-sm font-medium text-gray-700">Farol da Operação</span>
+                            <i class="fas fa-chevron-down text-gray-400 text-xs"></i>
+                        </div>
+                        
+                        <button class="p-2 hover:bg-gray-100 rounded-lg transition">
+                            <i class="fas fa-chart-line text-gray-600"></i>
+                        </button>
+                        <button class="p-2 hover:bg-gray-100 rounded-lg transition">
+                            <i class="fas fa-headset text-gray-600"></i>
+                        </button>
+                        <button class="p-2 hover:bg-gray-100 rounded-lg transition">
+                            <i class="fas fa-comment text-gray-600"></i>
+                        </button>
+                        <button class="p-2 hover:bg-gray-100 rounded-lg transition">
+                            <i class="fas fa-ellipsis-h text-gray-600"></i>
+                        </button>
+                        <button class="p-2 hover:bg-gray-100 rounded-lg transition">
+                            <i class="fas fa-expand text-gray-600"></i>
+                        </button>
+                    </div>
+                </div>
+                
+            </header>
+            
+            <!-- Área do Kanban -->
+            <main class="flex-1 overflow-x-auto bg-gray-250 p-2">
+                <div class="flex gap-1 h-full">
+                    
+                    <!-- Coluna: Análise (Estreita - 1 coluna) -->
+                    <div class="bg-white rounded-lg border border-gray-200 flex flex-col w-40 flex-shrink-0" data-kanban="analise">
+                        <div class="p-4 border-b border-gray-200">
+                            <div class="flex items-center justify-between">
+                                <h2 class="text-sm font-semibold text-gray-700">Análise</h2>
+                                <span class="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center text-xs font-medium text-gray-600" data-contador>3</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Cards dos Pedidos - 1 coluna -->
+                        <div class="flex-1 overflow-y-auto p-3 bg-yellow-100" data-kanban-drop>
+                            <div class="space-y-2 transition-all duration-300" data-kanban-grid>
+                                
+                                <!-- Card de Pedido -->
+                                <div class="bg-white border border-gray-200 rounded-lg p-2 hover:shadow-md transition cursor-move" data-pedido-card data-pedido-id="3904">
+                                    <div class="flex items-start justify-between mb-1">
+                                        <button class="text-gray-400 hover:text-gray-600 transition pointer-events-auto">
+                                            <i class="fas fa-print text-xs"></i>
+                                        </button>
+                                        <div class="w-4 h-4 flex items-center justify-center" data-card-icon>
+                                            <i class="fas fa-clock text-yellow-500 text-xs"></i>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="text-center">
+                                        <div class="text-xl font-bold text-gray-800 mb-0.5">3904</div>
+                                        <div class="text-xs text-gray-600 mb-1">Yago A.</div>
+                                        <button class="bg-yellow-400 hover:bg-yellow-500 text-white text-xs font-semibold py-1 px-2 rounded-full transition cursor-pointer w-full" data-card-badge title="Avançar para a próxima etapa">
+                                            Aceitar Pedido
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Card de Pedido 2 -->
+                                <div class="bg-white border border-gray-200 rounded-lg p-2 hover:shadow-md transition cursor-move" data-pedido-card data-pedido-id="3905">
+                                    <div class="flex items-start justify-between mb-1">
+                                        <button class="text-gray-400 hover:text-gray-600 transition pointer-events-auto">
+                                            <i class="fas fa-print text-xs"></i>
+                                        </button>
+                                        <div class="w-4 h-4 flex items-center justify-center" data-card-icon>
+                                            <i class="fas fa-clock text-yellow-500 text-xs"></i>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="text-center">
+                                        <div class="text-xl font-bold text-gray-800 mb-0.5">3905</div>
+                                        <div class="text-xs text-gray-600 mb-1">Maria S.</div>
+                                        <button class="bg-yellow-400 hover:bg-yellow-500 text-white text-xs font-semibold py-1 px-2 rounded-full transition cursor-pointer w-full" data-card-badge title="Avançar para a próxima etapa">
+                                            Aceitar Pedido
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Card de Pedido 3 -->
+                                <div class="bg-white border border-gray-200 rounded-lg p-2 hover:shadow-md transition cursor-move" data-pedido-card data-pedido-id="3906">
+                                    <div class="flex items-start justify-between mb-1">
+                                        <button class="text-gray-400 hover:text-gray-600 transition pointer-events-auto">
+                                            <i class="fas fa-print text-xs"></i>
+                                        </button>
+                                        <div class="w-4 h-4 flex items-center justify-center" data-card-icon>
+                                            <i class="fas fa-clock text-yellow-500 text-xs"></i>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="text-center">
+                                        <div class="text-xl font-bold text-gray-800 mb-0.5">3906</div>
+                                        <div class="text-xs text-gray-600 mb-1">Pedro R.</div>
+                                        <button class="bg-yellow-400 hover:bg-yellow-500 text-white text-xs font-semibold py-1 px-2 rounded-full transition cursor-pointer w-full" data-card-badge title="Avançar para a próxima etapa">
+                                            Aceitar Pedido
+                                        </button>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Coluna: Pedidos agendados (Larga) -->
+                    <div class="bg-white rounded-lg border border-gray-200 flex flex-col flex-1" data-kanban="agendados">
+                        <div class="p-4 border-b border-gray-200">
+                            <div class="flex items-center justify-between">
+                                <h2 class="text-sm font-semibold text-gray-700">Pedidos agendados</h2>
+                                <span class="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center text-xs font-medium text-gray-600" data-contador>9</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Cards dos Pedidos - Organizados por horário -->
+                        <div class="flex-1 overflow-y-auto p-3 bg-blue-100" data-kanban-drop>
+                            <div class="space-y-3">
+                                
+                                <!-- Intervalo 11:00 - 11:30 -->
+                                <div class="space-y-2">
+                                    <div class="flex items-center gap-2 px-2 py-1 bg-blue-200 rounded-md">
+                                        <i class="fas fa-clock text-blue-700 text-xs"></i>
+                                        <span class="text-xs font-semibold text-blue-900">11:00 - 11:30</span>
+                                        <span class="ml-auto text-xs text-blue-700 bg-blue-300 px-2 py-0.5 rounded-full">2</span>
+                                    </div>
+                                    <div class="grid grid-cols-3 gap-2" data-kanban-grid>
+                                        <div class="bg-white border border-blue-200 rounded-lg p-2 hover:shadow-md transition cursor-move" data-pedido-card data-pedido-id="3910" data-agendado-original="true">
+                                            <div class="flex items-start justify-between mb-2">
+                                                <button class="text-gray-400 hover:text-gray-600 transition pointer-events-auto">
+                                                    <i class="fas fa-print text-xs"></i>
+                                                </button>
+                                                <span class="text-xs font-bold text-blue-600">11:15</span>
+                                            </div>
+                                            <div class="text-center">
+                                                <div class="text-xl font-bold text-gray-800 mb-0.5">3910</div>
+                                                <div class="text-xs text-gray-600 mb-2">Sofia L.</div>
+                                                <button class="bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold py-1 px-2 rounded-full transition cursor-pointer w-full" data-card-badge title="Avançar para a próxima etapa">
+                                                    Iniciar
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="bg-white border border-blue-200 rounded-lg p-2 hover:shadow-md transition cursor-move" data-pedido-card data-pedido-id="3911" data-agendado-original="true">
+                                            <div class="flex items-start justify-between mb-2">
+                                                <button class="text-gray-400 hover:text-gray-600 transition pointer-events-auto">
+                                                    <i class="fas fa-print text-xs"></i>
+                                                </button>
+                                                <span class="text-xs font-bold text-blue-600">11:25</span>
+                                            </div>
+                                            <div class="text-center">
+                                                <div class="text-xl font-bold text-gray-800 mb-0.5">3911</div>
+                                                <div class="text-xs text-gray-600 mb-2">Ricardo P.</div>
+                                                <button class="bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold py-1 px-2 rounded-full transition cursor-pointer w-full" data-card-badge title="Avançar para a próxima etapa">
+                                                    Iniciar
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Intervalo 11:30 - 12:00 -->
+                                <div class="space-y-2">
+                                    <div class="flex items-center gap-2 px-2 py-1 bg-blue-200 rounded-md">
+                                        <i class="fas fa-clock text-blue-700 text-xs"></i>
+                                        <span class="text-xs font-semibold text-blue-900">11:30 - 12:00</span>
+                                        <span class="ml-auto text-xs text-blue-700 bg-blue-300 px-2 py-0.5 rounded-full">3</span>
+                                    </div>
+                                    <div class="grid grid-cols-3 gap-2" data-kanban-grid>
+                                        <div class="bg-white border border-blue-200 rounded-lg p-2 hover:shadow-md transition cursor-move" data-pedido-card data-pedido-id="3912" data-agendado-original="true">
+                                            <div class="flex items-start justify-between mb-2">
+                                                <button class="text-gray-400 hover:text-gray-600 transition pointer-events-auto">
+                                                    <i class="fas fa-print text-xs"></i>
+                                                </button>
+                                                <span class="text-xs font-bold text-blue-600">11:30</span>
+                                            </div>
+                                            <div class="text-center">
+                                                <div class="text-xl font-bold text-gray-800 mb-0.5">3912</div>
+                                                <div class="text-xs text-gray-600 mb-2">Ana M.</div>
+                                                <button class="bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold py-1 px-2 rounded-full transition cursor-pointer w-full" data-card-badge title="Avançar para a próxima etapa">
+                                                    Iniciar
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="bg-white border border-blue-200 rounded-lg p-2 hover:shadow-md transition cursor-move" data-pedido-card data-pedido-id="3913">
+                                            <div class="flex items-start justify-between mb-2">
+                                                <button class="text-gray-400 hover:text-gray-600 transition pointer-events-auto">
+                                                    <i class="fas fa-print text-xs"></i>
+                                                </button>
+                                                <span class="text-xs font-bold text-blue-600">11:45</span>
+                                            </div>
+                                            <div class="text-center">
+                                                <div class="text-xl font-bold text-gray-800 mb-0.5">3913</div>
+                                                <div class="text-xs text-gray-600 mb-2">Carlos S.</div>
+                                                <button class="bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold py-1 px-2 rounded-full transition cursor-pointer w-full" data-card-badge title="Avançar para a próxima etapa">
+                                                    Iniciar
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="bg-white border border-blue-200 rounded-lg p-2 hover:shadow-md transition cursor-move" data-pedido-card data-pedido-id="3914" data-agendado-original="true">
+                                            <div class="flex items-start justify-between mb-2">
+                                                <button class="text-gray-400 hover:text-gray-600 transition pointer-events-auto">
+                                                    <i class="fas fa-print text-xs"></i>
+                                                </button>
+                                                <span class="text-xs font-bold text-blue-600">11:55</span>
+                                            </div>
+                                            <div class="text-center">
+                                                <div class="text-xl font-bold text-gray-800 mb-0.5">3914</div>
+                                                <div class="text-xs text-gray-600 mb-2">Paula R.</div>
+                                                <button class="bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold py-1 px-2 rounded-full transition cursor-pointer w-full" data-card-badge title="Avançar para a próxima etapa">
+                                                    Iniciar
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Intervalo 12:00 - 12:30 -->
+                                <div class="space-y-2">
+                                    <div class="flex items-center gap-2 px-2 py-1 bg-blue-200 rounded-md">
+                                        <i class="fas fa-clock text-blue-700 text-xs"></i>
+                                        <span class="text-xs font-semibold text-blue-900">12:00 - 12:30</span>
+                                        <span class="ml-auto text-xs text-blue-700 bg-blue-300 px-2 py-0.5 rounded-full">4</span>
+                                    </div>
+                                    <div class="grid grid-cols-3 gap-2" data-kanban-grid>
+                                        <div class="bg-white border border-blue-200 rounded-lg p-2 hover:shadow-md transition cursor-move" data-pedido-card data-pedido-id="3915">
+                                            <div class="flex items-start justify-between mb-2">
+                                                <button class="text-gray-400 hover:text-gray-600 transition pointer-events-auto">
+                                                    <i class="fas fa-print text-xs"></i>
+                                                </button>
+                                                <span class="text-xs font-bold text-blue-600">12:00</span>
+                                            </div>
+                                            <div class="text-center">
+                                                <div class="text-xl font-bold text-gray-800 mb-0.5">3915</div>
+                                                <div class="text-xs text-gray-600 mb-2">João F.</div>
+                                                <button class="bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold py-1 px-2 rounded-full transition cursor-pointer w-full" data-card-badge title="Avançar para a próxima etapa">
+                                                    Iniciar
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="bg-white border border-blue-200 rounded-lg p-2 hover:shadow-md transition cursor-move" data-pedido-card data-pedido-id="3916" data-agendado-original="true">
+                                            <div class="flex items-start justify-between mb-2">
+                                                <button class="text-gray-400 hover:text-gray-600 transition pointer-events-auto">
+                                                    <i class="fas fa-print text-xs"></i>
+                                                </button>
+                                                <span class="text-xs font-bold text-blue-600">12:10</span>
+                                            </div>
+                                            <div class="text-center">
+                                                <div class="text-xl font-bold text-gray-800 mb-0.5">3916</div>
+                                                <div class="text-xs text-gray-600">Márcia T.</div>
+                                            </div>
+                                        </div>
+                                        <div class="bg-white border border-blue-200 rounded-lg p-2 hover:shadow-md transition cursor-move" data-pedido-card data-pedido-id="3917" data-agendado-original="true">
+                                            <div class="flex items-start justify-between mb-2">
+                                                <button class="text-gray-400 hover:text-gray-600 transition pointer-events-auto">
+                                                    <i class="fas fa-print text-xs"></i>
+                                                </button>
+                                                <span class="text-xs font-bold text-blue-600">12:15</span>
+                                            </div>
+                                            <div class="text-center">
+                                                <div class="text-xl font-bold text-gray-800 mb-0.5">3917</div>
+                                                <div class="text-xs text-gray-600 mb-2">Lucas V.</div>
+                                                <button class="bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold py-1 px-2 rounded-full transition cursor-pointer w-full" data-card-badge title="Avançar para a próxima etapa">
+                                                    Iniciar
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="bg-white border border-blue-200 rounded-lg p-2 hover:shadow-md transition cursor-move" data-pedido-card data-pedido-id="3918" data-agendado-original="true">
+                                            <div class="flex items-start justify-between mb-2">
+                                                <button class="text-gray-400 hover:text-gray-600 transition pointer-events-auto">
+                                                    <i class="fas fa-print text-xs"></i>
+                                                </button>
+                                                <span class="text-xs font-bold text-blue-600">12:25</span>
+                                            </div>
+                                            <div class="text-center">
+                                                <div class="text-xl font-bold text-gray-800 mb-0.5">3918</div>
+                                                <div class="text-xs text-gray-600 mb-2">Beatriz L.</div>
+                                                <button class="bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold py-1 px-2 rounded-full transition cursor-pointer w-full" data-card-badge title="Avançar para a próxima etapa">
+                                                    Iniciar
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Intervalo 12:30 - 13:00 -->
+                                <div class="space-y-2">
+                                    <div class="flex items-center gap-2 px-2 py-1 bg-blue-200 rounded-md">
+                                        <i class="fas fa-clock text-blue-700 text-xs"></i>
+                                        <span class="text-xs font-semibold text-blue-900">12:30 - 13:00</span>
+                                        <span class="ml-auto text-xs text-blue-700 bg-blue-300 px-2 py-0.5 rounded-full">2</span>
+                                    </div>
+                                    <div class="grid grid-cols-3 gap-2" data-kanban-grid>
+                                        <div class="bg-white border border-blue-200 rounded-lg p-2 hover:shadow-md transition cursor-move" data-pedido-card data-pedido-id="3919" data-agendado-original="true">
+                                            <div class="flex items-start justify-between mb-2">
+                                                <button class="text-gray-400 hover:text-gray-600 transition pointer-events-auto">
+                                                    <i class="fas fa-print text-xs"></i>
+                                                </button>
+                                                <span class="text-xs font-bold text-blue-600">12:30</span>
+                                            </div>
+                                            <div class="text-center">
+                                                <div class="text-xl font-bold text-gray-800 mb-0.5">3919</div>
+                                                <div class="text-xs text-gray-600 mb-2">Pedro K.</div>
+                                                <button class="bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold py-1 px-2 rounded-full transition cursor-pointer w-full" data-card-badge title="Avançar para a próxima etapa">
+                                                    Iniciar
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="bg-white border border-blue-200 rounded-lg p-2 hover:shadow-md transition cursor-move" data-pedido-card data-pedido-id="3920" data-agendado-original="true">
+                                            <div class="flex items-start justify-between mb-2">
+                                                <button class="text-gray-400 hover:text-gray-600 transition pointer-events-auto">
+                                                    <i class="fas fa-print text-xs"></i>
+                                                </button>
+                                                <span class="text-xs font-bold text-blue-600">12:45</span>
+                                            </div>
+                                            <div class="text-center">
+                                                <div class="text-xl font-bold text-gray-800 mb-0.5">3920</div>
+                                                <div class="text-xs text-gray-600 mb-2">Julia H.</div>
+                                                <button class="bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold py-1 px-2 rounded-full transition cursor-pointer w-full" data-card-badge title="Avançar para a próxima etapa">
+                                                    Iniciar
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Intervalo 13:00 - 13:30 -->
+                                <div class="space-y-2">
+                                    <div class="flex items-center gap-2 px-2 py-1 bg-blue-200 rounded-md">
+                                        <i class="fas fa-clock text-blue-700 text-xs"></i>
+                                        <span class="text-xs font-semibold text-blue-900">13:00 - 13:30</span>
+                                        <span class="ml-auto text-xs text-blue-700 bg-blue-300 px-2 py-0.5 rounded-full">1</span>
+                                    </div>
+                                    <div class="grid grid-cols-3 gap-2" data-kanban-grid>
+                                        <div class="bg-white border border-blue-200 rounded-lg p-2 hover:shadow-md transition cursor-move" data-pedido-card data-pedido-id="3921" data-agendado-original="true">
+                                            <div class="flex items-start justify-between mb-2">
+                                                <button class="text-gray-400 hover:text-gray-600 transition pointer-events-auto">
+                                                    <i class="fas fa-print text-xs"></i>
+                                                </button>
+                                                <span class="text-xs font-bold text-blue-600">13:15</span>
+                                            </div>
+                                            <div class="text-center">
+                                                <div class="text-xl font-bold text-gray-800 mb-0.5">3921</div>
+                                                <div class="text-xs text-gray-600 mb-2">Rafael M.</div>
+                                                <button class="bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold py-1 px-2 rounded-full transition cursor-pointer w-full" data-card-badge title="Avançar para a próxima etapa">
+                                                    Iniciar
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Intervalo 13:30 - 14:00 -->
+                                <div class="space-y-2">
+                                    <div class="flex items-center gap-2 px-2 py-1 bg-blue-200 rounded-md">
+                                        <i class="fas fa-clock text-blue-700 text-xs"></i>
+                                        <span class="text-xs font-semibold text-blue-900">13:30 - 14:00</span>
+                                        <span class="ml-auto text-xs text-blue-700 bg-blue-300 px-2 py-0.5 rounded-full">0</span>
+                                    </div>
+                                    <div class="grid grid-cols-3 gap-2" data-kanban-grid>
+                                        <!-- Vazio -->
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Coluna: Em preparo (Larga) -->
+                    <div class="bg-white rounded-lg border border-gray-200 flex flex-col flex-1" data-kanban="em-preparo">
+                        <div class="p-4 border-b border-gray-200">
+                            <div class="flex items-center justify-between">
+                                <h2 class="text-sm font-semibold text-gray-700">Em preparo</h2>
+                                <span class="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center text-xs font-medium text-gray-600" data-contador>3</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Cards dos Pedidos - 3 colunas -->
+                        <div class="flex-1 overflow-y-auto p-3 bg-orange-100" data-kanban-drop>
+                            <div class="grid grid-cols-3 gap-2 transition-all duration-300" data-kanban-grid>
+                                
+                                <!-- Card de Pedido -->
+                                <div class="bg-white border border-gray-200 rounded-lg p-2 hover:shadow-md transition cursor-move" data-pedido-card data-pedido-id="3901">
+                                    <div class="flex items-start justify-between mb-2">
+                                        <button class="text-gray-400 hover:text-gray-600 transition pointer-events-auto">
+                                            <i class="fas fa-print text-xs"></i>
+                                        </button>
+                                        <div class="w-4 h-4 flex items-center justify-center" data-card-icon>
+                                            <i class="fas fa-spinner fa-spin text-orange-400 text-xs"></i>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="text-center">
+                                        <div class="text-2xl font-bold text-gray-800 mb-0.5">3901</div>
+                                        <div class="text-xs text-gray-600 mb-2">João P.</div>
+                                        <button class="bg-orange-400 hover:bg-orange-500 text-white text-xs font-semibold py-1 px-2 rounded-full transition cursor-pointer w-full" data-card-badge title="Avançar para a próxima etapa">
+                                            7min
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Card de Pedido 2 -->
+                                <div class="bg-white border border-gray-200 rounded-lg p-2 hover:shadow-md transition cursor-move" data-pedido-card data-pedido-id="3902">
+                                    <div class="flex items-start justify-between mb-2">
+                                        <button class="text-gray-400 hover:text-gray-600 transition pointer-events-auto">
+                                            <i class="fas fa-print text-xs"></i>
+                                        </button>
+                                        <div class="w-4 h-4 flex items-center justify-center" data-card-icon>
+                                            <i class="fas fa-spinner fa-spin text-orange-400 text-xs"></i>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="text-center">
+                                        <div class="text-2xl font-bold text-gray-800 mb-0.5">3902</div>
+                                        <div class="text-xs text-gray-600 mb-2">Ana C.</div>
+                                        <button class="bg-orange-400 hover:bg-orange-500 text-white text-xs font-semibold py-1 px-2 rounded-full transition cursor-pointer w-full" data-card-badge title="Avançar para a próxima etapa">
+                                            12min
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Card de Pedido 3 -->
+                                <div class="bg-white border border-gray-200 rounded-lg p-2 hover:shadow-md transition cursor-move" data-pedido-card data-pedido-id="3903">
+                                    <div class="flex items-start justify-between mb-2">
+                                        <button class="text-gray-400 hover:text-gray-600 transition pointer-events-auto">
+                                            <i class="fas fa-print text-xs"></i>
+                                        </button>
+                                        <div class="w-4 h-4 flex items-center justify-center" data-card-icon>
+                                            <i class="fas fa-spinner fa-spin text-orange-400 text-xs"></i>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="text-center">
+                                        <div class="text-2xl font-bold text-gray-800 mb-0.5">3903</div>
+                                        <div class="text-xs text-gray-600 mb-2">Julia F.</div>
+                                        <button class="bg-orange-400 hover:bg-orange-500 text-white text-xs font-semibold py-1 px-2 rounded-full transition cursor-pointer w-full" data-card-badge title="Avançar para a próxima etapa">
+                                            15min
+                                        </button>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Coluna: Pronto (Larga) -->
+                    <div class="bg-white rounded-lg border border-gray-200 flex flex-col flex-1" data-kanban="pronto">
+                        <div class="p-4 border-b border-gray-200">
+                            <div class="flex items-center justify-between">
+                                <h2 class="text-sm font-semibold text-gray-700">Pronto</h2>
+                                <span class="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center text-xs font-medium text-gray-600" data-contador>1</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Cards dos Pedidos - 3 colunas -->
+                        <div class="flex-1 overflow-y-auto p-3 bg-green-100" data-kanban-drop>
+                            <div class="grid grid-cols-3 gap-2 transition-all duration-300" data-kanban-grid>
+                                
+                                <!-- Card de Pedido -->
+                                <div class="bg-white border border-gray-200 rounded-lg p-2 hover:shadow-md transition cursor-move" data-pedido-card data-pedido-id="3900">
+                                    <div class="flex items-start justify-between mb-2">
+                                        <button class="text-gray-400 hover:text-gray-600 transition pointer-events-auto">
+                                            <i class="fas fa-print text-xs"></i>
+                                        </button>
+                                        <div class="w-4 h-4 flex items-center justify-center" data-card-icon>
+                                            <i class="fas fa-check-circle text-green-500 text-xs"></i>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="text-center">
+                                        <div class="text-2xl font-bold text-gray-800 mb-0.5">3900</div>
+                                        <div class="text-xs text-gray-600 mb-2">Carlos M.</div>
+                                        <button class="bg-green-500 hover:bg-green-600 text-white text-xs font-semibold py-1 px-2 rounded-full transition cursor-pointer w-full" data-card-badge title="Avançar para a próxima etapa">
+                                            Pronto
+                                        </button>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                    
+                </div>
+            </main>
+            
+        </div>
+    </div>
+    
+    <!-- Socket.IO Client (não será usado ainda) -->
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+    
     <script>
-        const socket = io();
+        // ============================================
+        // DRAG AND DROP - Arrastar Pedidos
+        // ============================================
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            
+            // Função para configurar drag em um card
+            function configurarDragCard(card) {
+                card.draggable = true;
+                
+                // Remover listeners antigos se existirem
+                const novoCard = card.cloneNode(true);
+                card.parentNode.replaceChild(novoCard, card);
+                
+                // Evento quando começa a arrastar
+                novoCard.addEventListener('dragstart', function(e) {
+                    this.classList.add('opacity-50');
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/html', this.innerHTML);
+                    e.dataTransfer.setData('cardId', this.dataset.pedidoId);
+                });
+                
+                // Evento quando termina de arrastar
+                novoCard.addEventListener('dragend', function(e) {
+                    this.classList.remove('opacity-50');
+                });
+                
+                // Adicionar evento de impressão
+                const btnImprimir = novoCard.querySelector('.fa-print')?.closest('button');
+                if (btnImprimir) {
+                    btnImprimir.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        const pedidoId = novoCard.querySelector('.font-bold:not(.text-xs)').textContent.trim();
+                        console.log(`🖨️ Imprimir pedido #${pedidoId}`);
+                        alert(`🖨️ Imprimindo pedido #${pedidoId}...`);
+                        // Aqui você pode adicionar a lógica real de impressão
+                    });
+                    
+                    // Prevenir drag quando clicar no botão de impressão
+                    btnImprimir.addEventListener('mousedown', function(e) {
+                        e.stopPropagation();
+                    });
+                }
+                
+                // Adicionar evento no badge para avançar etapa
+                const badge = novoCard.querySelector('[data-card-badge]');
+                if (badge) {
+                    badge.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        avancarParaProximaEtapa(novoCard);
+                    });
+                    
+                    // Prevenir drag quando clicar no badge
+                    badge.addEventListener('mousedown', function(e) {
+                        e.stopPropagation();
+                    });
+                }
+            }
+            
+            // Tornar todos os cards arrastáveis
+            const cards = document.querySelectorAll('[data-pedido-card]');
+            cards.forEach(card => {
+                configurarDragCard(card);
+            });
+            
+            console.log('✅ Sistema de drag and drop iniciado');
+            console.log('✅ Regras de validação ativas');
+            console.log('🖨️ Ícones de impressão configurados');
+            
+            // Configurar zonas de drop (containers dos pedidos, não o grid)
+            const dropZones = document.querySelectorAll('[data-kanban-drop]');
+            
+            dropZones.forEach(zone => {
+                
+                // Evento quando o item arrasta sobre a zona
+                zone.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    
+                    // Verificar se o movimento será válido
+                    const cardAtual = document.querySelector('.opacity-50');
+                    if (cardAtual) {
+                        const origemKanban = cardAtual.closest('[data-kanban]');
+                        const destinoKanban = this.closest('[data-kanban]');
+                        const statusOrigem = origemKanban?.dataset.kanban;
+                        const statusDestino = destinoKanban?.dataset.kanban;
+                        const foiAgendado = cardAtual.dataset.agendadoOriginal === 'true';
+                        
+                        // Verificar se movimento é inválido
+                        const movimentoInvalido = 
+                            (statusOrigem === 'analise' && statusDestino === 'agendados') ||
+                            (statusOrigem !== 'analise' && statusDestino === 'analise') ||
+                            (!foiAgendado && statusDestino === 'agendados');
+                        
+                        if (movimentoInvalido) {
+                            e.dataTransfer.dropEffect = 'none';
+                            this.classList.add('bg-red-50', 'border-2', 'border-dashed', 'border-red-300');
+                        } else {
+                            e.dataTransfer.dropEffect = 'move';
+                            this.classList.add('bg-blue-50', 'border-2', 'border-dashed', 'border-blue-300');
+                        }
+                    }
+                });
+                
+                // Evento quando o item sai da zona
+                zone.addEventListener('dragleave', function(e) {
+                    this.classList.remove('bg-blue-50', 'border-2', 'border-dashed', 'border-blue-300');
+                    this.classList.remove('bg-red-50', 'border-2', 'border-dashed', 'border-red-300');
+                });
+                
+                // Evento quando solta o item na zona
+                zone.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    this.classList.remove('bg-blue-50', 'border-2', 'border-dashed', 'border-blue-300');
+                    this.classList.remove('bg-red-50', 'border-2', 'border-dashed', 'border-red-300');
+                    
+                    const cardId = e.dataTransfer.getData('cardId');
+                    const draggedCard = document.querySelector(`[data-pedido-id="${cardId}"]`);
+                    
+                    if (draggedCard) {
+                        // Determinar origem e destino
+                        const origemKanban = draggedCard.closest('[data-kanban]');
+                        const destinoKanban = this.closest('[data-kanban]');
+                        const statusOrigem = origemKanban.dataset.kanban;
+                        const statusDestino = destinoKanban.dataset.kanban;
+                        
+                        // ========================================
+                        // REGRAS DE VALIDAÇÃO
+                        // ========================================
+                        
+                        // Regra 1: Pedido da Análise não pode ir para Agendados
+                        if (statusOrigem === 'analise' && statusDestino === 'agendados') {
+                            alert('❌ Pedidos da Análise não podem ir para Pedidos Agendados!');
+                            return;
+                        }
+                        
+                        // Regra 2: Pedido aceito (que saiu de Análise) não pode voltar para Análise
+                        if (statusOrigem !== 'analise' && statusDestino === 'analise') {
+                            alert('❌ Pedidos já aceitos não podem voltar para Análise!');
+                            return;
+                        }
+                        
+                        // Regra 3: Pedidos não agendados não podem ir para Agendados
+                        // Verificar se o pedido foi agendado originalmente
+                        const foiAgendado = draggedCard.dataset.agendadoOriginal === 'true';
+                        
+                        if (!foiAgendado && statusDestino === 'agendados') {
+                            alert('❌ Apenas pedidos que foram agendados originalmente podem voltar para esta coluna!');
+                            return;
+                        }
+                        
+                        // ========================================
+                        // MOVIMENTAÇÃO PERMITIDA
+                        // ========================================
+                        
+                        // Remover card da origem
+                        draggedCard.remove();
+                        
+                        // Atualizar formato do card ANTES de adicionar
+                        atualizarCardStatus(draggedCard, statusDestino);
+                        
+                        // Adicionar card no destino
+                        const destinoGrid = this.querySelector('[data-kanban-grid]');
+                        if (destinoGrid) {
+                            destinoGrid.appendChild(draggedCard);
+                        }
+                        
+                        // Reconfigurar eventos de drag no card atualizado
+                        configurarDragCard(draggedCard);
+                        
+                        // Atualizar contadores
+                        atualizarContadores(origemKanban);
+                        atualizarContadores(destinoKanban);
+                        
+                        console.log(`✅ Pedido ${cardId} movido de ${statusOrigem} para ${statusDestino}`);
+                    }
+                });
+            });
+            
+            // Função para atualizar o status visual do card
+            function atualizarCardStatus(card, status) {
+                // Pegar dados do card
+                const numero = card.querySelector('.font-bold:not(.text-xs)').textContent.trim();
+                const nome = card.querySelector('.text-gray-600').textContent.trim();
+                const pedidoId = card.dataset.pedidoId;
+                const agendadoOriginal = card.dataset.agendadoOriginal;
+                
+                // Criar novo HTML baseado no status
+                let novoHTML = '';
+                
+                switch(status) {
+                    case 'agendados':
+                        novoHTML = `
+                            <div class="flex items-start justify-between mb-2">
+                                <button class="text-gray-400 hover:text-gray-600 transition pointer-events-auto">
+                                    <i class="fas fa-print text-xs"></i>
+                                </button>
+                                <span class="text-xs font-bold text-blue-600">12:00</span>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-xl font-bold text-gray-800 mb-0.5">${numero}</div>
+                                <div class="text-xs text-gray-600 mb-2">${nome}</div>
+                                <button class="bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold py-1 px-2 rounded-full transition cursor-pointer w-full" data-card-badge title="Avançar para a próxima etapa">
+                                    Iniciar
+                                </button>
+                            </div>
+                        `;
+                        card.className = 'bg-white border border-blue-200 rounded-lg p-2 hover:shadow-md transition cursor-move';
+                        break;
+                        
+                    case 'analise':
+                        novoHTML = `
+                            <div class="flex items-start justify-between mb-1">
+                                <button class="text-gray-400 hover:text-gray-600 transition pointer-events-auto">
+                                    <i class="fas fa-print text-xs"></i>
+                                </button>
+                                <div class="w-4 h-4 flex items-center justify-center" data-card-icon>
+                                    <i class="fas fa-clock text-yellow-500 text-xs"></i>
+                                </div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-xl font-bold text-gray-800 mb-0.5">${numero}</div>
+                                <div class="text-xs text-gray-600 mb-1">${nome}</div>
+                                <button class="bg-yellow-400 hover:bg-yellow-500 text-white text-xs font-semibold py-1 px-2 rounded-full transition cursor-pointer w-full" data-card-badge title="Avançar para a próxima etapa">
+                                    Aceitar Pedido
+                                </button>
+                            </div>
+                        `;
+                        card.className = 'bg-white border border-gray-200 rounded-lg p-2 hover:shadow-md transition cursor-move';
+                        break;
+                        
+                    case 'em-preparo':
+                        novoHTML = `
+                            <div class="flex items-start justify-between mb-2">
+                                <button class="text-gray-400 hover:text-gray-600 transition pointer-events-auto">
+                                    <i class="fas fa-print text-xs"></i>
+                                </button>
+                                <div class="w-4 h-4 flex items-center justify-center" data-card-icon>
+                                    <i class="fas fa-spinner fa-spin text-orange-400 text-xs"></i>
+                                </div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-2xl font-bold text-gray-800 mb-0.5">${numero}</div>
+                                <div class="text-xs text-gray-600 mb-2">${nome}</div>
+                                <button class="bg-orange-400 hover:bg-orange-500 text-white text-xs font-semibold py-1 px-2 rounded-full transition cursor-pointer w-full" data-card-badge title="Avançar para a próxima etapa">
+                                    5min
+                                </button>
+                            </div>
+                        `;
+                        card.className = 'bg-white border border-gray-200 rounded-lg p-2 hover:shadow-md transition cursor-move';
+                        break;
+                        
+                    case 'pronto':
+                        novoHTML = `
+                            <div class="flex items-start justify-between mb-2">
+                                <button class="text-gray-400 hover:text-gray-600 transition pointer-events-auto">
+                                    <i class="fas fa-print text-xs"></i>
+                                </button>
+                                <div class="w-4 h-4 flex items-center justify-center" data-card-icon>
+                                    <i class="fas fa-check-circle text-green-500 text-xs"></i>
+                                </div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-2xl font-bold text-gray-800 mb-0.5">${numero}</div>
+                                <div class="text-xs text-gray-600 mb-2">${nome}</div>
+                                <button class="bg-green-500 hover:bg-green-600 text-white text-xs font-semibold py-1 px-2 rounded-full transition cursor-pointer w-full" data-card-badge title="Avançar para a próxima etapa">
+                                    Pronto
+                                </button>
+                            </div>
+                        `;
+                        card.className = 'bg-white border border-gray-200 rounded-lg p-2 hover:shadow-md transition cursor-move';
+                        break;
+                }
+                
+                // Atualizar HTML do card
+                card.innerHTML = novoHTML;
+                // Limpar estilos inline
+                card.style.marginBottom = '';
+                
+                // Preservar atributos data-* importantes
+                card.dataset.pedidoId = pedidoId;
+                if (agendadoOriginal) {
+                    card.dataset.agendadoOriginal = agendadoOriginal;
+                }
+                card.dataset.pedidoCard = '';
+            }
+            
+            // Função para atualizar contador de pedidos em cada coluna
+            function atualizarContadores(kanban) {
+                if (!kanban) return;
+                
+                const dropZone = kanban.querySelector('[data-kanban-drop]');
+                const contador = kanban.querySelector('[data-contador]');
+                
+                if (!dropZone || !contador) return;
+                
+                const totalPedidos = dropZone.querySelectorAll('[data-pedido-card]').length;
+                
+                contador.textContent = totalPedidos;
+            }
+            
+            // Função para avançar pedido para próxima etapa
+            function avancarParaProximaEtapa(card) {
+                const kanbanAtual = card.closest('[data-kanban]');
+                const statusAtual = kanbanAtual.dataset.kanban;
+                const pedidoId = card.dataset.pedidoId;
+                const numero = card.querySelector('.font-bold:not(.text-xs)').textContent.trim();
+                
+                let proximoStatus = '';
+                let proximoKanban = null;
+                
+                // Determinar próxima etapa
+                switch(statusAtual) {
+                    case 'analise':
+                        proximoStatus = 'em-preparo';
+                        break;
+                    case 'agendados':
+                        proximoStatus = 'em-preparo';
+                        break;
+                    case 'em-preparo':
+                        proximoStatus = 'pronto';
+                        break;
+                    case 'pronto':
+                        console.log(`✅ Pedido #${numero} já está na última etapa!`);
+                        alert(`✅ Pedido #${numero} já está pronto para entrega!`);
+                        return;
+                }
+                
+                // Buscar Kanban de destino
+                proximoKanban = document.querySelector(`[data-kanban="${proximoStatus}"]`);
+                
+                if (proximoKanban) {
+                    // Remover da origem
+                    card.remove();
+                    
+                    // Atualizar formato
+                    atualizarCardStatus(card, proximoStatus);
+                    
+                    // Adicionar no destino
+                    const destinoGrid = proximoKanban.querySelector('[data-kanban-drop] [data-kanban-grid]');
+                    if (destinoGrid) {
+                        destinoGrid.appendChild(card);
+                    }
+                    
+                    // Reconfigurar drag
+                    configurarDragCard(card);
+                    
+                    // Atualizar contadores
+                    atualizarContadores(kanbanAtual);
+                    atualizarContadores(proximoKanban);
+                    
+                    console.log(`➡️ Pedido #${numero} avançou de ${statusAtual} para ${proximoStatus}`);
+                }
+            }
+            
+        });
     </script>
+    
 </body>
 </html>

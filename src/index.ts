@@ -9,7 +9,11 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const server = createServer(app);
+
 const io = new Server(server);
+
+// // ✅ Servir arquivos estáticos
+// app.use(express.static(path.join(__dirname, '../public')));
 
 app.get("/", (req, res) => {
   res.sendFile(join(__dirname, "../public/index.html"));
@@ -19,6 +23,6 @@ io.on("connection", (socket) => {
   console.log("User Conectado");
 });
 
-app.listen(3000, () => {
+server.listen(3000, () => {
   console.log("Servidor rodando na porta 8080");
 });
