@@ -61,7 +61,7 @@ async function consultarPedido(orderId) {
     try {
         console.log(`📡 Consultando pedido ${orderId}...`);
         
-        const response = await fetch(`https://api-parceiros.anota.ai/partnerauth/ping/get/${orderId}`, {
+        const response = await fetch(`${API_CONFIG.baseURL}/get/${orderId}`, {
             method: 'GET',
             headers: API_CONFIG.headers
         });
@@ -83,32 +83,6 @@ async function consultarPedido(orderId) {
         console.error('❌ Erro na requisição:', error);
         return null;
     }
-}
-
-// Enriquecer pedido com informações completas se necessário
-async function enriquecerPedidoComDadosCompletos(pedido) {
-    // Se já tem shortReference e customer.name, retorna como está
-    if (pedido.shortReference && pedido.customer?.name) {
-        return pedido;
-    }
-    
-    // Caso contrário, busca informações completas
-    const pedidoCompleto = await consultarPedido(pedido._id || pedido.id);
-    
-    if (pedidoCompleto) {
-        // Mescla os dados, priorizando os dados completos
-        return {
-            ...pedido,
-            shortReference: pedidoCompleto.shortReference || pedido.shortReference,
-            customer: {
-                ...pedido.customer,
-                name: pedidoCompleto.customer?.name || pedido.customer?.name || 'Cliente'
-            }
-        };
-    }
-    
-    // Se não conseguir buscar, retorna o pedido original
-    return pedido;
 }
 
 // Aceitar um pedido (da Análise)
@@ -178,13 +152,11 @@ function mapearStatusParaKanban(checkCode) {
     return STATUS_MAP[checkCode.toString()] || 'analise';
 }
 
-// Criar card HTML a partir dos dados da API (versão síncrona - usa dados já enriquecidos)
+// Criar card HTML a partir dos dados da API
 function criarCardDoPedido(pedido) {
     const status = mapearStatusParaKanban(pedido.check);
     const isAgendado = pedido.check === -2;
-    // Usar shortReference se disponível, senão usar últimos 4 dígitos do _id
-    const numero = pedido.shortReference || (pedido._id ? pedido._id.slice(-4) : 'N/A');
-    // Usar customer.name se disponível, senão 'Cliente'
+    const numero = pedido.shortReference || pedido._id.slice(-4);
     const nomeCliente = pedido.customer?.name || 'Cliente';
     
     // Determinar qual formato de card criar
@@ -329,7 +301,7 @@ async function carregarPedidosNoPainel() {
     // Limpar Kanbans atuais
     limparTodosKanbans();
     
-    // Adicionar pedidos em cada Kanban (enriquecendo com dados completos)
+    // Adicionar pedidos em cada Kanban
     for (const [status, listaPedidos] of Object.entries(pedidosPorStatus)) {
         const kanban = document.querySelector(`[data-kanban="${status}"]`);
         
@@ -337,12 +309,8 @@ async function carregarPedidosNoPainel() {
             const grid = kanban.querySelector('[data-kanban-grid]');
             
             if (grid) {
-                // Processar pedidos em paralelo, mas limitar para não sobrecarregar
-                const promises = listaPedidos.map(async (pedido) => {
-                    // Enriquecer pedido com dados completos se necessário
-                    const pedidoEnriquecido = await enriquecerPedidoComDadosCompletos(pedido);
-                    
-                    const cardHTML = criarCardDoPedido(pedidoEnriquecido);
+                listaPedidos.forEach(pedido => {
+                    const cardHTML = criarCardDoPedido(pedido);
                     const tempDiv = document.createElement('div');
                     tempDiv.innerHTML = cardHTML;
                     const card = tempDiv.firstElementChild;
@@ -354,9 +322,6 @@ async function carregarPedidosNoPainel() {
                         window.configurarDragCard(card);
                     }
                 });
-                
-                // Aguardar todos os pedidos serem processados
-                await Promise.all(promises);
             }
             
             // Atualizar contador
@@ -409,7 +374,6 @@ function iniciarAtualizacaoAutomatica(intervalSegundos = 30) {
 // Exportar funções para serem usadas globalmente
 window.listarPedidosDoDia = listarPedidosDoDia;
 window.consultarPedido = consultarPedido;
-window.enriquecerPedidoComDadosCompletos = enriquecerPedidoComDadosCompletos;
 window.aceitarPedido = aceitarPedido;
 window.marcarPedidoComoPronto = marcarPedidoComoPronto;
 window.carregarPedidosNoPainel = carregarPedidosNoPainel;

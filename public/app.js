@@ -433,7 +433,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Escutar novos pedidos do webhook
-    socket.on('novo-pedido', async (pedido) => {
+    socket.on('novo-pedido', (pedido) => {
         console.log('🔔 NOVO PEDIDO RECEBIDO VIA WEBHOOK:', pedido);
         
         // Mapear status do pedido
@@ -456,15 +456,9 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        // Enriquecer pedido com dados completos (shortReference e customer.name)
-        let pedidoEnriquecido = pedido;
-        if (typeof window.enriquecerPedidoComDadosCompletos === 'function') {
-            pedidoEnriquecido = await window.enriquecerPedidoComDadosCompletos(pedido);
-        }
-        
         // Criar card do pedido (função do api.js)
         if (typeof window.criarCardDoPedido === 'function') {
-            const cardHTML = window.criarCardDoPedido(pedidoEnriquecido);
+            const cardHTML = window.criarCardDoPedido(pedido);
             const tempDiv = document.createElement('div');
             tempDiv.innerHTML = cardHTML;
             const card = tempDiv.firstElementChild;
@@ -482,8 +476,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Atualizar contador
                     atualizarContadores(kanban);
                     
-                    const numeroPedido = pedidoEnriquecido.shortReference || pedidoEnriquecido._id || 'N/A';
-                    console.log(`✅ Pedido #${numeroPedido} adicionado em "${status}"`);
+                    console.log(`✅ Pedido #${pedido.shortReference || pedido._id} adicionado em "${status}"`);
                     
                     // Tocar som de notificação (opcional)
                     try {
