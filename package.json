@@ -6,7 +6,7 @@
   "main": "build/index.js",
   "scripts": {
     "build": "tsc",
-    "dev": "tsx src/index.ts",
+    "dev": "tsx src/index.ts -watch",
     "start": "node .",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -23,11 +23,13 @@
   "homepage": "https://github.com/rafaelrodrigofs/painelexpedicao#readme",
   "dependencies": {
     "express": "^5.2.1",
-    "socket.io": "^4.8.1"
+    "socket.io": "^4.8.1",
+    "tailwindcss": "^4.1.17"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
     "@types/node": "^24.10.1",
+    "@types/socket.io": "^3.0.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   }
