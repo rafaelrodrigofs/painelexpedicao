@@ -252,9 +252,42 @@ document.addEventListener('DOMContentLoaded', function() {
                 break;
                 
             case 'pronto':
-                console.log(`✅ Pedido #${numero} já está na última etapa!`);
-                alert(`✅ Pedido #${numero} já está pronto para entrega!`);
-                return;
+                // FINALIZAR PEDIDO NA API DO ANOTAAI
+                if (typeof window.finalizarPedido === 'function') {
+                    console.log(`📡 Finalizando pedido #${numero} na API...`);
+                    
+                    // Desabilitar o botão temporariamente
+                    const badge = card.querySelector('[data-card-badge]');
+                    if (badge) {
+                        badge.disabled = true;
+                        badge.textContent = 'Finalizando...';
+                    }
+                    
+                    const resultado = await window.finalizarPedido(pedidoId);
+                    
+                    if (!resultado.success) {
+                        console.error('❌ Falha ao finalizar pedido:', resultado.error);
+                        alert(`❌ Erro ao finalizar pedido #${numero}. Tente novamente.`);
+                        
+                        // Restaurar botão
+                        if (badge) {
+                            badge.disabled = false;
+                            badge.textContent = 'Pronto';
+                        }
+                        return;
+                    }
+                    
+                    console.log(`✅ Pedido #${numero} finalizado na API!`);
+                    
+                    // Remover card do painel (pedidos finalizados não são exibidos)
+                    card.remove();
+                    atualizarContadores(kanbanAtual);
+                    
+                    return;
+                } else {
+                    console.log(`✅ Pedido #${numero} já está na última etapa!`);
+                    return;
+                }
         }
         
         const proximoKanban = document.querySelector(`[data-kanban="${proximoStatus}"]`);
@@ -352,6 +385,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (!foiAgendado && statusDestino === 'agendados') {
                     alert('❌ Apenas pedidos que foram agendados originalmente podem voltar para esta coluna!');
                     return;
+                }
+                
+                // SE ESTÁ EM PRONTO E TENTA MOVER, FINALIZAR AO INVÉS DE MOVER
+                if (statusOrigem === 'pronto' && statusDestino !== 'pronto') {
+                    if (typeof window.finalizarPedido === 'function') {
+                        console.log(`📡 Finalizando pedido #${numero} na API...`);
+                        
+                        const resultado = await window.finalizarPedido(cardId);
+                        
+                        if (!resultado.success) {
+                            console.error('❌ Falha ao finalizar pedido:', resultado.error);
+                            alert(`❌ Erro ao finalizar pedido #${numero}. Tente novamente.`);
+                            return;
+                        }
+                        
+                        console.log(`✅ Pedido #${numero} finalizado na API!`);
+                        
+                        // Remover card do painel (pedidos finalizados não são exibidos)
+                        draggedCard.remove();
+                        atualizarContadores(origemKanban);
+                        
+                        return;
+                    }
                 }
                 
                 // SE ESTÁ SAINDO DA ANÁLISE, ACEITAR NA API PRIMEIRO

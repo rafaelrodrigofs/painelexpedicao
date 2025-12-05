@@ -3,7 +3,7 @@ import path, { join } from "path";
 import { Server } from "socket.io";
 import { createServer } from "http";
 import { fileURLToPath } from "url";
-import { salvarPedido, buscarPedidosDoDia } from "./redis.js";
+import { testConnection, salvarPedidoTeste } from "./database.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
@@ -16,6 +16,33 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, '../public')));
 app.get("/", (req, res) => {
     res.sendFile(join(__dirname, "../public/index.html"));
+});
+// ✅ ENDPOINT DE TESTE DE CONEXÃO COM BANCO
+app.get("/test-db", async (req, res) => {
+    try {
+        const connected = await testConnection();
+        if (connected) {
+            res.status(200).json({
+                success: true,
+                message: "Conexão com banco de dados OK",
+                database: "marmitariafarias",
+                host: "31.97.255.115"
+            });
+        }
+        else {
+            res.status(500).json({
+                success: false,
+                message: "Falha ao conectar com banco de dados"
+            });
+        }
+    }
+    catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Erro ao testar conexão",
+            error: error instanceof Error ? error.message : String(error)
+        });
+    }
 });
 // ✅ ENDPOINT DE TESTE - Para testar o webhook manualmente
 app.post("/webhook/test", (req, res) => {
@@ -45,24 +72,6 @@ app.post("/webhook/test", (req, res) => {
         });
     }
 });
-// ✅ ENDPOINT PARA BUSCAR PEDIDOS DO REDIS
-app.get("/api/pedidos", async (req, res) => {
-    try {
-        const pedidos = await buscarPedidosDoDia();
-        res.status(200).json({
-            success: true,
-            count: pedidos.length,
-            pedidos: pedidos
-        });
-    }
-    catch (error) {
-        console.error("❌ Erro ao buscar pedidos:", error);
-        res.status(500).json({
-            success: false,
-            message: "Erro ao buscar pedidos"
-        });
-    }
-});
 // ✅ ENDPOINT WEBHOOK - Recebe pedidos do AnotaAI
 app.post("/webhook", async (req, res) => {
     try {
@@ -78,9 +87,19 @@ app.post("/webhook", async (req, res) => {
                 message: "Body vazio"
             });
         }
-        // Salvar pedido no Redis
-        console.log("💾 Salvando pedido no Redis...");
-        await salvarPedido(pedido);
+        // Salvar pedido no banco de dados (tabela de teste)
+        console.log("💾 Tentando salvar pedido no banco de dados...");
+        const resultadoSalvamento = await salvarPedidoTeste(pedido);
+        if (resultadoSalvamento.success) {
+            console.log("✅ Pedido salvo no banco de dados! ID:", resultadoSalvamento.insertId);
+        }
+        else if (resultadoSalvamento.duplicate) {
+            console.log("⚠️ Pedido já existe no banco (duplicata)");
+        }
+        else {
+            console.error("❌ Falha ao salvar pedido no banco:", resultadoSalvamento.error);
+            // Continua mesmo se falhar ao salvar, para não bloquear o webhook
+        }
         // Emitir pedido via Socket.io para todos os clientes conectados
         console.log("📡 Emitindo pedido via Socket.io...");
         io.emit("novo-pedido", pedido);
@@ -89,7 +108,9 @@ app.post("/webhook", async (req, res) => {
         // Responder ao AnotaAI
         res.status(200).json({
             success: true,
-            message: "Pedido recebido com sucesso"
+            message: "Pedido recebido com sucesso",
+            saved: resultadoSalvamento.success,
+            insertId: resultadoSalvamento.insertId || null
         });
     }
     catch (error) {
@@ -109,9 +130,30 @@ io.on("connection", (socket) => {
     });
 });
 const PORT = process.env.PORT || 3000;
+// Testar conexão com banco de dados ao iniciar (não bloqueia o servidor)
+testConnection().then(success => {
+    if (success) {
+        console.log('✅ Banco de dados pronto para receber pedidos');
+    }
+    else {
+        console.warn('');
+        console.warn('⚠️ ATENÇÃO: Não foi possível conectar ao banco de dados');
+        console.warn('⚠️ O servidor continuará rodando normalmente');
+        console.warn('⚠️ Webhook e Socket.io funcionarão, mas pedidos NÃO serão salvos no banco');
+        console.warn('');
+        console.warn('💡 Para resolver o problema de acesso ao MySQL:');
+        console.warn('   1. Verifique se o MySQL permite conexões remotas');
+        console.warn('   2. Execute no MySQL:');
+        console.warn('      GRANT ALL PRIVILEGES ON *.* TO \'root\'@\'%\' IDENTIFIED BY \'marmitariafarias\';');
+        console.warn('      FLUSH PRIVILEGES;');
+        console.warn('   3. Verifique o firewall na porta 3306');
+        console.warn('');
+    }
+}).catch(err => {
+    console.error('❌ Erro ao testar conexão:', err);
+});
 server.listen(PORT, () => {
     console.log(`🚀 Servidor rodando na porta ${PORT}`);
     console.log(`📍 Webhook disponível em: http://localhost:${PORT}/webhook`);
-    console.log(`📡 API de pedidos: http://localhost:${PORT}/api/pedidos`);
-    console.log(`💾 Redis configurado (host: ${process.env.REDIS_HOST || 'localhost'})`);
+    console.log(`🧪 Teste de webhook: http://localhost:${PORT}/webhook/test`);
 });

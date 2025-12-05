@@ -3,6 +3,7 @@ import path, { dirname, join } from "path";
 import { Server } from "socket.io";
 import { createServer } from "http";
 import { fileURLToPath } from "url";
+import mysql from "mysql2/promise";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -11,6 +12,31 @@ const app = express();
 const server = createServer(app);
 
 const io = new Server(server);
+
+// ✅ CONFIGURAÇÃO DO BANCO DE DADOS
+const dbConfig = {
+  host: '31.97.255.115',
+  port: 3307,
+  user: 'root',
+  password: 'rodrigo0196',
+  database: 'marmitariafarias',
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
+};
+
+// Criar pool de conexões
+const pool = mysql.createPool(dbConfig);
+
+// Testar conexão
+pool.getConnection()
+  .then(connection => {
+    console.log('✅ Conectado ao banco de dados MySQL');
+    connection.release();
+  })
+  .catch(error => {
+    console.error('❌ Erro ao conectar ao banco de dados:', error);
+  });
 
 // ✅ Middleware para processar JSON
 app.use(express.json());
@@ -53,8 +79,91 @@ app.post("/webhook/test", (req, res) => {
   }
 });
 
+// ✅ FUNÇÃO PARA SALVAR PEDIDO NO BANCO DE DADOS
+async function salvarPedidoNoBanco(pedido: any) {
+  try {
+    // Extrair dados do pedido
+    const externalId = pedido._id || pedido.id || null;
+    const shortReference = pedido.shortReference || null;
+    const check = pedido.check !== undefined ? pedido.check : null;
+    const total = pedido.total ? parseFloat(pedido.total) : null;
+    const deliveryFee = pedido.deliveryFee ? parseFloat(pedido.deliveryFee) : 0;
+    const subtotal = total && deliveryFee ? total - deliveryFee : total;
+    
+    // Extrair datas
+    const createdAt = pedido.createdAt ? new Date(pedido.createdAt) : new Date();
+    const updatedAt = pedido.updatedAt ? new Date(pedido.updatedAt) : new Date();
+    const dateOrder = createdAt.toISOString().split('T')[0]; // YYYY-MM-DD
+    const timeOrder = createdAt.toTimeString().split(' ')[0].substring(0, 8); // HH:MM:SS
+    
+    // Verificar se pedido já existe (pelo external_id_order)
+    const [existing] = await pool.execute(
+      'SELECT id_order FROM o01_order WHERE external_id_order = ?',
+      [externalId]
+    ) as [any[], any];
+    
+    if (Array.isArray(existing) && existing.length > 0) {
+      // Atualizar pedido existente
+      await pool.execute(
+        `UPDATE o01_order SET 
+          shortReference_order = ?,
+          check_order = ?,
+          subtotal_order = ?,
+          delivery_fee = ?,
+          total_order = ?,
+          updatedAt = ?
+        WHERE external_id_order = ?`,
+        [
+          shortReference,
+          check,
+          subtotal,
+          deliveryFee,
+          total,
+          updatedAt,
+          externalId
+        ]
+      );
+      console.log(`✅ Pedido ${externalId} atualizado no banco de dados`);
+      return { success: true, action: 'updated' };
+    } else {
+      // Inserir novo pedido
+      const [result] = await pool.execute(
+        `INSERT INTO o01_order (
+          shortReference_order,
+          date_order,
+          time_order,
+          subtotal_order,
+          delivery_fee,
+          total_order,
+          check_order,
+          external_id_order,
+          createdAt,
+          updatedAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          shortReference,
+          dateOrder,
+          timeOrder,
+          subtotal,
+          deliveryFee,
+          total,
+          check,
+          externalId,
+          createdAt,
+          updatedAt
+        ]
+      ) as [any, any];
+      console.log(`✅ Pedido ${externalId} salvo no banco de dados`);
+      return { success: true, action: 'inserted', id: (result as any).insertId };
+    }
+  } catch (error) {
+    console.error('❌ Erro ao salvar pedido no banco:', error);
+    throw error;
+  }
+}
+
 // ✅ ENDPOINT WEBHOOK - Recebe pedidos do AnotaAI
-app.post("/webhook", (req, res) => {
+app.post("/webhook", async (req, res) => {
   try {
     console.log("📦 WEBHOOK RECEBIDO DO ANOTAAI:");
     console.log("📋 Headers:", req.headers);
@@ -69,6 +178,15 @@ app.post("/webhook", (req, res) => {
         success: false, 
         message: "Body vazio" 
       });
+    }
+    
+    // Salvar pedido no banco de dados
+    try {
+      await salvarPedidoNoBanco(pedido);
+      console.log("💾 Pedido salvo no banco de dados");
+    } catch (dbError) {
+      console.error("❌ Erro ao salvar no banco (continuando...):", dbError);
+      // Não interrompe o fluxo se falhar ao salvar no banco
     }
     
     // Emitir pedido via Socket.io para todos os clientes conectados

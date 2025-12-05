@@ -169,6 +169,35 @@ async function marcarPedidoComoPronto(orderId) {
     }
 }
 
+// Finalizar pedido (de Pronto para Finalizado)
+async function finalizarPedido(orderId) {
+    try {
+        console.log(`✅ Finalizando pedido ${orderId}...`);
+        
+        const response = await fetch(`https://api-parceiros.anota.ai/partnerauth/order/finalize/${orderId}`, {
+            method: 'POST',
+            headers: API_CONFIG.headers
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Erro HTTP: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            console.log(`✅ Pedido ${orderId} finalizado com sucesso!`);
+            return { success: true, data };
+        } else {
+            console.error('❌ Erro ao finalizar pedido:', data);
+            return { success: false, error: data };
+        }
+    } catch (error) {
+        console.error('❌ Erro na requisição:', error);
+        return { success: false, error: error.message };
+    }
+}
+
 // ========================================
 // FUNÇÕES DE PROCESSAMENTO
 // ========================================
@@ -495,6 +524,7 @@ window.consultarPedido = consultarPedido;
 window.enriquecerPedidoComDadosCompletos = enriquecerPedidoComDadosCompletos;
 window.aceitarPedido = aceitarPedido;
 window.marcarPedidoComoPronto = marcarPedidoComoPronto;
+window.finalizarPedido = finalizarPedido;
 window.carregarPedidosNoPainel = carregarPedidosNoPainel;
 window.iniciarAtualizacaoAutomatica = iniciarAtualizacaoAutomatica;
 window.criarCardDoPedido = criarCardDoPedido;
