@@ -9,6 +9,18 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const server = createServer(app);
 const io = new Server(server);
+// ✅ Configuração do banco de dados
+const dbConfig = {
+    host: "31.97.255.115",
+    port: 3307,
+    user: "root",
+    password: "rodrigo0196",
+    database: "marmitariafarias",
+};
+// ✅ Função helper para criar conexão com o banco
+async function getDbConnection() {
+    return await mysql.createConnection(dbConfig);
+}
 // ✅ Middleware para processar JSON
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -18,7 +30,8 @@ app.get("/", (req, res) => {
     res.sendFile(join(__dirname, "../public/index.html"));
 });
 // ✅ ENDPOINT WEBHOOK - Recebe pedidos do AnotaAI
-app.post("/webhook", (req, res) => {
+app.post("/webhook", async (req, res) => {
+    let connection;
     try {
         console.log("📦 WEBHOOK RECEBIDO DO ANOTAAI:");
         console.log("📋 Headers:", req.headers);
@@ -32,6 +45,19 @@ app.post("/webhook", (req, res) => {
                 message: "Body vazio",
             });
         }
+        // ✅ Salvar pedido no banco de dados
+        connection = await getDbConnection();
+        const shortReference = pedido.shortReference || null;
+        if (shortReference !== null) {
+            const [result] = await connection.execute("INSERT INTO o01_order (shortReference_order) VALUES (?)", [shortReference]);
+            console.log("💾 Pedido salvo no banco de dados:");
+            console.log(`   - ID inserido: ${result.insertId}`);
+            console.log(`   - shortReference: ${shortReference}`);
+        }
+        else {
+            console.warn("⚠️ Pedido sem shortReference, não será salvo no banco");
+        }
+        await connection.end();
         // Emitir pedido via Socket.io para todos os clientes conectados
         console.log("📡 Emitindo pedido via Socket.io...");
         io.emit("novo-pedido", pedido);
@@ -46,6 +72,9 @@ app.post("/webhook", (req, res) => {
     catch (error) {
         console.error("❌ Erro ao processar webhook:", error);
         console.error("Stack:", error instanceof Error ? error.stack : "N/A");
+        if (connection) {
+            await connection.end().catch(() => { });
+        }
         res.status(500).json({
             success: false,
             message: "Erro ao processar pedido",
@@ -53,17 +82,11 @@ app.post("/webhook", (req, res) => {
         });
     }
 });
-app.post("/database_teste", async (req, res) => {
+app.get("/database_teste", async (req, res) => {
     let connection;
     try {
         // Configuração da conexão com o banco de dados
-        connection = await mysql.createConnection({
-            host: "31.97.255.115",
-            port: 3307,
-            user: "root",
-            password: "rodrigo0196",
-            database: "marmitariafarias",
-        });
+        connection = await getDbConnection();
         // Testar a conexão executando uma query simples
         const [rows] = await connection.execute("SELECT 1 as teste, NOW() as data_hora, DATABASE() as banco_atual");
         await connection.end();
