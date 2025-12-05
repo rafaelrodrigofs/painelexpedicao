@@ -15,14 +15,25 @@ const redis = new Redis({
 
 redis.on('connect', () => {
   console.log('✅ Redis conectado com sucesso');
+  console.log(`📍 Redis Host: ${process.env.REDIS_HOST || 'localhost'}`);
+  console.log(`📍 Redis Port: ${process.env.REDIS_PORT || '6379'}`);
 });
 
 redis.on('error', (error: Error) => {
   console.error('❌ Erro no Redis:', error);
+  console.error('❌ Mensagem:', error.message);
+  console.error('❌ Stack:', error.stack);
 });
 
 redis.on('ready', () => {
   console.log('✅ Redis pronto para uso');
+});
+
+// Testar conexão ao iniciar
+redis.ping().then(() => {
+  console.log('✅ Redis PING: OK');
+}).catch((error) => {
+  console.error('❌ Redis PING falhou:', error);
 });
 
 // Funções auxiliares para gerenciar pedidos no Redis
@@ -30,26 +41,48 @@ redis.on('ready', () => {
 // Salvar um pedido no Redis
 export async function salvarPedido(pedido: any) {
   try {
+    console.log('💾 Iniciando salvamento no Redis...');
+    console.log('💾 Pedido recebido:', JSON.stringify(pedido, null, 2));
+    
     const pedidoId = pedido._id || pedido.id;
     if (!pedidoId) {
       throw new Error('Pedido sem ID');
     }
     
+    console.log(`💾 Pedido ID: ${pedidoId}`);
+    
+    // Verificar se Redis está conectado
+    const status = redis.status;
+    console.log(`💾 Status do Redis: ${status}`);
+    
+    if (status !== 'ready' && status !== 'connect') {
+      console.warn(`⚠️ Redis não está pronto. Status: ${status}`);
+    }
+    
     // Salvar pedido completo
-    await redis.set(`pedido:${pedidoId}`, JSON.stringify(pedido));
+    console.log(`💾 Salvando pedido:${pedidoId}...`);
+    const resultadoSet = await redis.set(`pedido:${pedidoId}`, JSON.stringify(pedido));
+    console.log(`💾 Resultado SET: ${resultadoSet}`);
     
     // Adicionar à lista de pedidos do dia (usando data como chave)
     const hoje = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-    await redis.sadd(`pedidos:${hoje}`, pedidoId);
+    console.log(`💾 Data de hoje: ${hoje}`);
+    const resultadoSadd1 = await redis.sadd(`pedidos:${hoje}`, pedidoId);
+    console.log(`💾 Resultado SADD (dia): ${resultadoSadd1}`);
     
     // Adicionar ao índice por status
-    const status = pedido.check?.toString() || '0';
-    await redis.sadd(`pedidos:status:${status}`, pedidoId);
+    const statusPedido = pedido.check?.toString() || '0';
+    console.log(`💾 Status do pedido: ${statusPedido}`);
+    const resultadoSadd2 = await redis.sadd(`pedidos:status:${statusPedido}`, pedidoId);
+    console.log(`💾 Resultado SADD (status): ${resultadoSadd2}`);
     
-    console.log(`💾 Pedido ${pedidoId} salvo no Redis`);
+    console.log(`✅ Pedido ${pedidoId} salvo no Redis com sucesso!`);
     return true;
   } catch (error) {
     console.error('❌ Erro ao salvar pedido no Redis:', error);
+    console.error('❌ Tipo do erro:', error instanceof Error ? error.constructor.name : typeof error);
+    console.error('❌ Mensagem:', error instanceof Error ? error.message : String(error));
+    console.error('❌ Stack:', error instanceof Error ? error.stack : 'N/A');
     return false;
   }
 }

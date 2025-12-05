@@ -59,7 +59,7 @@ async function listarPedidosDoDia() {
 // Consultar informações detalhadas de um pedido
 async function consultarPedido(orderId) {
     try {
-        console.log(`📡 Consultando pedido ${orderId}...`);
+        // console.log(`📡 Consultando pedido ${orderId}...`);
         
         const response = await fetch(`https://api-parceiros.anota.ai/partnerauth/ping/get/${orderId}`, {
             method: 'GET',
@@ -73,7 +73,7 @@ async function consultarPedido(orderId) {
         const data = await response.json();
         
         if (data.success) {
-            console.log(`✅ Pedido ${orderId} encontrado`);
+            // console.log(`✅ Pedido ${orderId} encontrado`);
             return data.info;
         } else {
             console.error('❌ Erro ao consultar pedido:', data);

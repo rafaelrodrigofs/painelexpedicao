@@ -24,8 +24,8 @@ app.get("/", (req, res) => {
   res.sendFile(join(__dirname, "../public/index.html"));
 });
 
-// ✅ ENDPOINT DE TESTE - Para testar o webhook manualmente
-app.post("/webhook/test", (req, res) => {
+// ✅ ENDPOINT DE TESTE - Para testar o webhook manualmente (salva no Redis)
+app.post("/webhook/test", async (req, res) => {
   try {
     const pedidoTeste = {
       _id: "TEST_" + Date.now(),
@@ -37,19 +37,69 @@ app.post("/webhook/test", (req, res) => {
       createdAt: new Date().toISOString()
     };
     
+    console.log("🧪 TESTE: Salvando pedido de teste no Redis...");
+    const salvou = await salvarPedido(pedidoTeste);
+    
+    if (salvou) {
+      console.log("✅ TESTE: Pedido salvo no Redis com sucesso!");
+    } else {
+      console.error("❌ TESTE: Falha ao salvar pedido no Redis");
+    }
+    
     console.log("🧪 TESTE: Emitindo pedido de teste via Socket.io");
     io.emit("novo-pedido", pedidoTeste);
     
     res.status(200).json({ 
       success: true, 
-      message: "Pedido de teste emitido",
+      message: "Pedido de teste processado",
+      salvouNoRedis: salvou,
       pedido: pedidoTeste
     });
   } catch (error) {
     console.error("❌ Erro no teste:", error);
     res.status(500).json({ 
       success: false, 
-      message: "Erro ao testar webhook" 
+      message: "Erro ao testar webhook",
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
+// ✅ ENDPOINT PARA TESTAR REDIS DIRETAMENTE
+app.get("/api/test-redis", async (req, res) => {
+  try {
+    console.log("🧪 TESTE REDIS: Testando conexão...");
+    
+    // Testar conexão básica
+    const redis = (await import('./redis.js')).default;
+    await redis.ping();
+    
+    // Tentar salvar um teste
+    const pedidoTeste = {
+      _id: "TEST_REDIS_" + Date.now(),
+      shortReference: 8888,
+      check: 0,
+      customer: { name: "Teste Redis" },
+      createdAt: new Date().toISOString()
+    };
+    
+    const salvou = await salvarPedido(pedidoTeste);
+    const pedidos = await buscarPedidosDoDia();
+    
+    res.status(200).json({
+      success: true,
+      redisConectado: true,
+      salvouTeste: salvou,
+      totalPedidos: pedidos.length,
+      mensagem: "Redis está funcionando!"
+    });
+  } catch (error) {
+    console.error("❌ Erro ao testar Redis:", error);
+    res.status(500).json({
+      success: false,
+      redisConectado: false,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
     });
   }
 });
