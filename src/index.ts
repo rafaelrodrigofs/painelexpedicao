@@ -9,7 +9,7 @@ const dbconfig = {
   host: "31.97.255.115",
   port: 3307,
   user: "root",
-  password: "rodrigo019612",
+  password: "#Rodrigo0196",
   database: "marmitariafarias",
   connectTimeout: 10000, // 10 segundos de timeout
   waitForConnections: true,
