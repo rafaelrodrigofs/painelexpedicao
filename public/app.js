@@ -400,7 +400,32 @@ document.addEventListener('DOMContentLoaded', function() {
     
     console.log('');
     console.log('💡 Comandos disponíveis:');
-    console.log('   - carregarPedidosNoPainel() - Carregar todos os pedidos do dia');
-    console.log('   - iniciarAtualizacaoAutomatica(30) - Atualizar a cada 30s');
+    console.log('   - carregarPedidosNoPainel() - Carregar manualmente');
+    console.log('   - iniciarAtualizacaoAutomatica(X) - Mudar intervalo de atualização');
+    
+    // ========================================
+    // CARREGAR PEDIDOS AUTOMATICAMENTE
+    // ========================================
+    
+    // Aguardar que a função da API esteja disponível
+    setTimeout(() => {
+        if (typeof window.carregarPedidosNoPainel === 'function') {
+            console.log('');
+            console.log('🔄 Carregando pedidos existentes da API...');
+            
+            // Carregar pedidos ao iniciar
+            window.carregarPedidosNoPainel();
+            
+            // Atualizar automaticamente a cada 30 segundos
+            setInterval(() => {
+                console.log('🔄 Atualizando pedidos...');
+                window.carregarPedidosNoPainel();
+            }, 30000); // 30 segundos
+            
+            console.log('✅ Atualização automática ativada (a cada 30s)');
+        } else {
+            console.error('❌ Função carregarPedidosNoPainel não encontrada');
+        }
+    }, 500);
     
 });
